@@ -2,6 +2,7 @@ package com.mycompany.perpustakaan.controller;
 
 import com.mycompany.perpustakaan.dao.UserDao;
 import com.mycompany.perpustakaan.model.User;
+import com.mycompany.perpustakaan.utils.PasswordHasher;
 import com.mycompany.perpustakaan.utils.SessionManager;
 import java.sql.SQLException;
 
@@ -18,8 +19,12 @@ public class AuthController {
             throw new IllegalArgumentException("Username dan password wajib diisi.");
         }
 
-        User user = userDao.findByUsernameAndPassword(username.trim(), password);
+        User user = userDao.findByUsername(username.trim());
         if (user == null) {
+            return null;
+        }
+
+        if (!PasswordHasher.matches(password, user.getPassword())) {
             return null;
         }
 

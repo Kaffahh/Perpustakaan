@@ -9,14 +9,13 @@ import java.sql.SQLException;
 
 public class UserDao {
 
-    public User findByUsernameAndPassword(String username, String password) throws SQLException {
-        String sql = "SELECT id_user, username, nama_lengkap, email, password, role, created_at FROM users WHERE username = ? AND password = ? LIMIT 1";
+    public User findByUsername(String username) throws SQLException {
+        String sql = "SELECT id_user, username, nama_lengkap, email, password, role, created_at FROM users WHERE username = ? LIMIT 1";
 
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, username);
-            statement.setString(2, password);
 
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (!resultSet.next()) {
