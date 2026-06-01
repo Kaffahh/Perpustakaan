@@ -12,5 +12,7 @@ public class Perpustakaan {
 
     public static void main(String[] args) {
         System.out.println("nama saya bintang!");
+        System.out.println("Backend Perpustakaan siap.");
+        System.out.println("Jalankan com.mycompany.perpustakaan.test.TestDatabaseConnection untuk uji koneksi database.");
     }
 }
