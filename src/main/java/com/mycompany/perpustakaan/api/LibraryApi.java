@@ -6,7 +6,10 @@ import com.mycompany.perpustakaan.controller.DashboardController;
 import com.mycompany.perpustakaan.controller.HistoryController;
 import com.mycompany.perpustakaan.controller.LoanController;
 import com.mycompany.perpustakaan.controller.StaffBookController;
+<<<<<<< HEAD
 import com.mycompany.perpustakaan.controller.StaffLoanReturnController;
+=======
+>>>>>>> develop
 import com.mycompany.perpustakaan.controller.VisitController;
 import com.mycompany.perpustakaan.model.Buku;
 import com.mycompany.perpustakaan.model.Kunjungan;
@@ -28,7 +31,10 @@ public class LibraryApi {
     private final HistoryController historyController;
     private final VisitController visitController;
     private final StaffBookController staffBookController;
+<<<<<<< HEAD
     private final StaffLoanReturnController staffLoanReturnController;
+=======
+>>>>>>> develop
 
     public LibraryApi() {
         this.authController = new AuthController();
@@ -38,7 +44,10 @@ public class LibraryApi {
         this.historyController = new HistoryController();
         this.visitController = new VisitController();
         this.staffBookController = new StaffBookController();
+<<<<<<< HEAD
         this.staffLoanReturnController = new StaffLoanReturnController();
+=======
+>>>>>>> develop
     }
 
     public AuthResponse login(String username, String password) throws SQLException {
@@ -197,6 +206,7 @@ public class LibraryApi {
         return BookSummary.from(staffBookController.getBookById(idBuku));
     }
 
+<<<<<<< HEAD
     public LoanResponse createLoanForUser(int idUser, int idBuku, int loanDays) throws SQLException {
         try {
             Peminjaman peminjaman = staffLoanReturnController.createLoanForUser(idUser, idBuku, loanDays);
@@ -225,6 +235,8 @@ public class LibraryApi {
                 result.getStatus());
     }
 
+=======
+>>>>>>> develop
     public DashboardSummary getDashboardSummary(int latestLimit) throws SQLException {
         return new DashboardSummary(getCurrentUser(), getTotalBooks(), getLatestBooks(latestLimit));
     }
