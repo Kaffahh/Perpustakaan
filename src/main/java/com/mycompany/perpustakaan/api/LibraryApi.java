@@ -3,9 +3,14 @@ package com.mycompany.perpustakaan.api;
 import com.mycompany.perpustakaan.controller.AuthController;
 import com.mycompany.perpustakaan.controller.BookshelfController;
 import com.mycompany.perpustakaan.controller.DashboardController;
+import com.mycompany.perpustakaan.controller.LoanController;
 import com.mycompany.perpustakaan.model.Buku;
+import com.mycompany.perpustakaan.model.Peminjaman;
 import com.mycompany.perpustakaan.model.User;
+import com.mycompany.perpustakaan.utils.FineCalculator;
+import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,11 +19,13 @@ public class LibraryApi {
     private final AuthController authController;
     private final DashboardController dashboardController;
     private final BookshelfController bookshelfController;
+    private final LoanController loanController;
 
     public LibraryApi() {
         this.authController = new AuthController();
         this.dashboardController = new DashboardController();
         this.bookshelfController = new BookshelfController();
+        this.loanController = new LoanController();
     }
 
     public AuthResponse login(String username, String password) throws SQLException {
@@ -69,6 +76,20 @@ public class LibraryApi {
         return bookshelfController.getCategories();
     }
 
+    public LoanResponse requestLoan(int idBuku, int loanDays) throws SQLException {
+        try {
+            Peminjaman peminjaman = loanController.requestLoan(idBuku, loanDays);
+            return LoanResponse.success("Peminjaman berhasil diajukan.", toLoanSummary(peminjaman));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return LoanResponse.failure(exception.getMessage());
+        }
+    }
+
+    public List<LoanSummary> getCurrentLoans() throws SQLException {
+        List<Peminjaman> loans = loanController.getCurrentLoans();
+        return toLoanSummaries(loans);
+    }
+
     public DashboardSummary getDashboardSummary(int latestLimit) throws SQLException {
         return new DashboardSummary(getCurrentUser(), getTotalBooks(), getLatestBooks(latestLimit));
     }
@@ -79,6 +100,21 @@ public class LibraryApi {
             summaries.add(BookSummary.from(book));
         }
         return summaries;
+    }
+
+    private List<LoanSummary> toLoanSummaries(List<Peminjaman> loans) {
+        List<LoanSummary> summaries = new ArrayList<>();
+        for (Peminjaman loan : loans) {
+            summaries.add(toLoanSummary(loan));
+        }
+        return summaries;
+    }
+
+    private LoanSummary toLoanSummary(Peminjaman loan) {
+        LocalDate comparisonDate = loan.getTanggalKembali() == null ? LocalDate.now() : loan.getTanggalKembali();
+        int lateDays = FineCalculator.countLateDays(loan.getTanggalJatuhTempo(), comparisonDate);
+        BigDecimal runningFine = FineCalculator.calculateFine(loan.getTanggalJatuhTempo(), comparisonDate);
+        return LoanSummary.from(loan, lateDays, runningFine);
     }
 
     private String normalizeText(String value) {

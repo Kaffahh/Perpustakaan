@@ -1,0 +1,184 @@
+package com.mycompany.perpustakaan.dao;
+
+import com.mycompany.perpustakaan.config.Database;
+import com.mycompany.perpustakaan.model.Peminjaman;
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+public class PeminjamanDao {
+
+    public boolean hasActiveLoanForBook(int idUser, int idBuku) throws SQLException {
+        String sql = "SELECT 1 FROM peminjaman WHERE id_user = ? AND id_buku = ? AND tanggal_kembali IS NULL AND status IN ('dipinjam', 'terlambat') LIMIT 1";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, idUser);
+            statement.setInt(2, idBuku);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        }
+    }
+
+    public int countActiveLoansByUser(int idUser) throws SQLException {
+        String sql = "SELECT COUNT(*) AS total FROM peminjaman WHERE id_user = ? AND tanggal_kembali IS NULL AND status IN ('dipinjam', 'terlambat')";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, idUser);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("total");
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    public Peminjaman createLoan(int idUser, int idBuku, LocalDate tanggalPinjam, LocalDate tanggalJatuhTempo, Integer createdBy) throws SQLException {
+        String selectBookSql = "SELECT stok_tersedia FROM buku WHERE id_buku = ? FOR UPDATE";
+        String insertLoanSql = "INSERT INTO peminjaman (id_user, id_buku, tanggal_pinjam, tanggal_jatuh_tempo, status, denda, created_by) VALUES (?, ?, ?, ?, 'dipinjam', 0.00, ?)";
+        String updateStockSql = "UPDATE buku SET stok_tersedia = stok_tersedia - 1 WHERE id_buku = ? AND stok_tersedia > 0";
+
+        try (Connection connection = Database.getConnection()) {
+            boolean previousAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+
+            try {
+                int stock = getLockedBookStock(connection, selectBookSql, idBuku);
+                if (stock <= 0) {
+                    connection.rollback();
+                    return null;
+                }
+
+                int idPeminjaman = insertLoan(connection, insertLoanSql, idUser, idBuku, tanggalPinjam, tanggalJatuhTempo, createdBy);
+                int updatedRows = updateStock(connection, updateStockSql, idBuku);
+                if (updatedRows != 1) {
+                    connection.rollback();
+                    return null;
+                }
+
+                connection.commit();
+                return findById(idPeminjaman);
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(previousAutoCommit);
+            }
+        }
+    }
+
+    public List<Peminjaman> findActiveLoansByUser(int idUser) throws SQLException {
+        String sql = "SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku WHERE p.id_user = ? AND p.tanggal_kembali IS NULL AND p.status IN ('dipinjam', 'terlambat') ORDER BY p.tanggal_jatuh_tempo ASC, p.id_peminjaman ASC";
+        List<Peminjaman> loans = new ArrayList<>();
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, idUser);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    loans.add(mapPeminjaman(resultSet));
+                }
+            }
+        }
+
+        return loans;
+    }
+
+    public Peminjaman findById(int idPeminjaman) throws SQLException {
+        String sql = "SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku WHERE p.id_peminjaman = ? LIMIT 1";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, idPeminjaman);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    return null;
+                }
+                return mapPeminjaman(resultSet);
+            }
+        }
+    }
+
+    private int getLockedBookStock(Connection connection, String sql, int idBuku) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, idBuku);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new SQLException("Buku tidak ditemukan.");
+                }
+                return resultSet.getInt("stok_tersedia");
+            }
+        }
+    }
+
+    private int insertLoan(Connection connection, String sql, int idUser, int idBuku, LocalDate tanggalPinjam, LocalDate tanggalJatuhTempo, Integer createdBy) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            statement.setInt(1, idUser);
+            statement.setInt(2, idBuku);
+            statement.setDate(3, Date.valueOf(tanggalPinjam));
+            statement.setDate(4, Date.valueOf(tanggalJatuhTempo));
+            if (createdBy == null) {
+                statement.setNull(5, java.sql.Types.INTEGER);
+            } else {
+                statement.setInt(5, createdBy);
+            }
+
+            statement.executeUpdate();
+
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (!generatedKeys.next()) {
+                    throw new SQLException("Gagal mengambil id peminjaman baru.");
+                }
+                return generatedKeys.getInt(1);
+            }
+        }
+    }
+
+    private int updateStock(Connection connection, String sql, int idBuku) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, idBuku);
+            return statement.executeUpdate();
+        }
+    }
+
+    private Peminjaman mapPeminjaman(ResultSet resultSet) throws SQLException {
+        Date tanggalKembali = resultSet.getDate("tanggal_kembali");
+        BigDecimal denda = resultSet.getBigDecimal("denda");
+        Integer createdBy = resultSet.getObject("created_by") != null ? resultSet.getInt("created_by") : null;
+
+        return new Peminjaman(
+                resultSet.getInt("id_peminjaman"),
+                resultSet.getInt("id_user"),
+                resultSet.getInt("id_buku"),
+                resultSet.getDate("tanggal_pinjam").toLocalDate(),
+                resultSet.getDate("tanggal_jatuh_tempo").toLocalDate(),
+                tanggalKembali == null ? null : tanggalKembali.toLocalDate(),
+                resultSet.getString("status"),
+                denda == null ? BigDecimal.ZERO : denda,
+                createdBy,
+                resultSet.getString("kode_buku"),
+                resultSet.getString("judul"),
+                resultSet.getString("penulis"),
+                resultSet.getString("kategori"));
+    }
+}
