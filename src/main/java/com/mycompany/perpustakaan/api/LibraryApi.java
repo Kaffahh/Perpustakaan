@@ -6,6 +6,10 @@ import com.mycompany.perpustakaan.controller.DashboardController;
 import com.mycompany.perpustakaan.controller.HistoryController;
 import com.mycompany.perpustakaan.controller.LoanController;
 import com.mycompany.perpustakaan.controller.StaffBookController;
+<<<<<<< HEAD
+import com.mycompany.perpustakaan.controller.StaffLoanReturnController;
+=======
+>>>>>>> develop
 import com.mycompany.perpustakaan.controller.VisitController;
 import com.mycompany.perpustakaan.model.Buku;
 import com.mycompany.perpustakaan.model.Kunjungan;
@@ -27,6 +31,10 @@ public class LibraryApi {
     private final HistoryController historyController;
     private final VisitController visitController;
     private final StaffBookController staffBookController;
+<<<<<<< HEAD
+    private final StaffLoanReturnController staffLoanReturnController;
+=======
+>>>>>>> develop
 
     public LibraryApi() {
         this.authController = new AuthController();
@@ -36,6 +44,10 @@ public class LibraryApi {
         this.historyController = new HistoryController();
         this.visitController = new VisitController();
         this.staffBookController = new StaffBookController();
+<<<<<<< HEAD
+        this.staffLoanReturnController = new StaffLoanReturnController();
+=======
+>>>>>>> develop
     }
 
     public AuthResponse login(String username, String password) throws SQLException {
@@ -194,6 +206,37 @@ public class LibraryApi {
         return BookSummary.from(staffBookController.getBookById(idBuku));
     }
 
+<<<<<<< HEAD
+    public LoanResponse createLoanForUser(int idUser, int idBuku, int loanDays) throws SQLException {
+        try {
+            Peminjaman peminjaman = staffLoanReturnController.createLoanForUser(idUser, idBuku, loanDays);
+            return LoanResponse.success("Peminjaman berhasil diproses.", toLoanSummary(peminjaman));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return LoanResponse.failure(exception.getMessage());
+        }
+    }
+
+    public LoanResponse processReturn(int idPeminjaman) throws SQLException {
+        try {
+            Peminjaman peminjaman = staffLoanReturnController.processReturn(idPeminjaman);
+            return LoanResponse.success("Pengembalian berhasil diproses.", toLoanSummary(peminjaman));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return LoanResponse.failure(exception.getMessage());
+        }
+    }
+
+    public LoanManagementPage getLoansForManagement(String status, int page, int pageSize) throws SQLException {
+        StaffLoanReturnController.LoanManagementResult result = staffLoanReturnController.getLoans(status, page, pageSize);
+        return new LoanManagementPage(
+                toLoanSummaries(result.getLoans()),
+                result.getTotalItems(),
+                result.getPage(),
+                result.getPageSize(),
+                result.getStatus());
+    }
+
+=======
+>>>>>>> develop
     public DashboardSummary getDashboardSummary(int latestLimit) throws SQLException {
         return new DashboardSummary(getCurrentUser(), getTotalBooks(), getLatestBooks(latestLimit));
     }
@@ -217,7 +260,9 @@ public class LibraryApi {
     private LoanSummary toLoanSummary(Peminjaman loan) {
         LocalDate comparisonDate = loan.getTanggalKembali() == null ? LocalDate.now() : loan.getTanggalKembali();
         int lateDays = FineCalculator.countLateDays(loan.getTanggalJatuhTempo(), comparisonDate);
-        BigDecimal runningFine = FineCalculator.calculateFine(loan.getTanggalJatuhTempo(), comparisonDate);
+        BigDecimal runningFine = loan.getTanggalKembali() == null
+                ? FineCalculator.calculateFine(loan.getTanggalJatuhTempo(), comparisonDate)
+                : loan.getDenda();
         return LoanSummary.from(loan, lateDays, runningFine);
     }
 

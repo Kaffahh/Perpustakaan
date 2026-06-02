@@ -136,6 +136,75 @@ public class PeminjamanDao {
         }
     }
 
+    public List<Peminjaman> findLoansForManagement(String status, int limit, int offset) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku WHERE 1=1");
+        List<Object> parameters = new ArrayList<>();
+
+        appendManagementStatusFilter(sql, parameters, status);
+        sql.append(" ORDER BY p.tanggal_pinjam DESC, p.id_peminjaman DESC LIMIT ? OFFSET ?");
+        parameters.add(limit);
+        parameters.add(offset);
+
+        List<Peminjaman> loans = new ArrayList<>();
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            setParameters(statement, parameters);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    loans.add(mapPeminjaman(resultSet));
+                }
+            }
+        }
+
+        return loans;
+    }
+
+    public int countLoansForManagement(String status) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM peminjaman p WHERE 1=1");
+        List<Object> parameters = new ArrayList<>();
+
+        appendManagementStatusFilter(sql, parameters, status);
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            setParameters(statement, parameters);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("total");
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    public Peminjaman processReturn(int idPeminjaman, LocalDate tanggalKembali, String status, BigDecimal denda) throws SQLException {
+        String selectLoanSql = "SELECT id_buku, tanggal_kembali, status FROM peminjaman WHERE id_peminjaman = ? FOR UPDATE";
+        String updateLoanSql = "UPDATE peminjaman SET tanggal_kembali = ?, status = ?, denda = ? WHERE id_peminjaman = ?";
+        String updateStockSql = "UPDATE buku SET stok_tersedia = LEAST(stok_tersedia + 1, stok_total) WHERE id_buku = ?";
+
+        try (Connection connection = Database.getConnection()) {
+            boolean previousAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+
+            try {
+                int idBuku = getLockedLoanBookId(connection, selectLoanSql, idPeminjaman);
+                updateReturnedLoan(connection, updateLoanSql, idPeminjaman, tanggalKembali, status, denda);
+                updateReturnedBookStock(connection, updateStockSql, idBuku);
+
+                connection.commit();
+                return findById(idPeminjaman);
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(previousAutoCommit);
+            }
+        }
+    }
+
     public List<Peminjaman> findLoanHistoryByUser(int idUser, String status, int limit, int offset) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku WHERE p.id_user = ?");
         List<Object> parameters = new ArrayList<>();
@@ -189,6 +258,17 @@ public class PeminjamanDao {
         }
     }
 
+    private void appendManagementStatusFilter(StringBuilder sql, List<Object> parameters, String status) {
+        if (status != null) {
+            if ("aktif".equalsIgnoreCase(status)) {
+                sql.append(" AND p.tanggal_kembali IS NULL AND p.status IN ('dipinjam', 'terlambat')");
+            } else {
+                sql.append(" AND p.status = ?");
+                parameters.add(status);
+            }
+        }
+    }
+
     private void setParameters(PreparedStatement statement, List<Object> parameters) throws SQLException {
         for (int index = 0; index < parameters.size(); index++) {
             statement.setObject(index + 1, parameters.get(index));
@@ -235,6 +315,43 @@ public class PeminjamanDao {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, idBuku);
             return statement.executeUpdate();
+        }
+    }
+
+    private int getLockedLoanBookId(Connection connection, String sql, int idPeminjaman) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, idPeminjaman);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new SQLException("Data peminjaman tidak ditemukan.");
+                }
+                if (resultSet.getDate("tanggal_kembali") != null || "dikembalikan".equalsIgnoreCase(resultSet.getString("status"))) {
+                    throw new SQLException("Peminjaman sudah dikembalikan.");
+                }
+                return resultSet.getInt("id_buku");
+            }
+        }
+    }
+
+    private void updateReturnedLoan(Connection connection, String sql, int idPeminjaman, LocalDate tanggalKembali, String status, BigDecimal denda) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setDate(1, Date.valueOf(tanggalKembali));
+            statement.setString(2, status);
+            statement.setBigDecimal(3, denda);
+            statement.setInt(4, idPeminjaman);
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException("Gagal memperbarui data peminjaman.");
+            }
+        }
+    }
+
+    private void updateReturnedBookStock(Connection connection, String sql, int idBuku) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, idBuku);
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException("Gagal memperbarui stok buku.");
+            }
         }
     }
 
