@@ -3,6 +3,7 @@ package com.mycompany.perpustakaan.api;
 import com.mycompany.perpustakaan.controller.AuthController;
 import com.mycompany.perpustakaan.controller.BookshelfController;
 import com.mycompany.perpustakaan.controller.DashboardController;
+import com.mycompany.perpustakaan.controller.HistoryController;
 import com.mycompany.perpustakaan.controller.LoanController;
 import com.mycompany.perpustakaan.model.Buku;
 import com.mycompany.perpustakaan.model.Peminjaman;
@@ -20,12 +21,14 @@ public class LibraryApi {
     private final DashboardController dashboardController;
     private final BookshelfController bookshelfController;
     private final LoanController loanController;
+    private final HistoryController historyController;
 
     public LibraryApi() {
         this.authController = new AuthController();
         this.dashboardController = new DashboardController();
         this.bookshelfController = new BookshelfController();
         this.loanController = new LoanController();
+        this.historyController = new HistoryController();
     }
 
     public AuthResponse login(String username, String password) throws SQLException {
@@ -88,6 +91,20 @@ public class LibraryApi {
     public List<LoanSummary> getCurrentLoans() throws SQLException {
         List<Peminjaman> loans = loanController.getCurrentLoans();
         return toLoanSummaries(loans);
+    }
+
+    public HistoryPage getLoanHistory(String status, int page, int pageSize) throws SQLException {
+        try {
+            int safePage = historyController.normalizePage(page);
+            int safePageSize = historyController.normalizePageSize(pageSize);
+            String safeStatus = historyController.normalizeStatus(status);
+            List<Peminjaman> loans = historyController.getUserLoanHistory(safeStatus, safePage, safePageSize);
+            int totalItems = historyController.countUserLoanHistory(safeStatus);
+
+            return new HistoryPage(toLoanSummaries(loans), totalItems, safePage, safePageSize, safeStatus);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw exception;
+        }
     }
 
     public DashboardSummary getDashboardSummary(int latestLimit) throws SQLException {
