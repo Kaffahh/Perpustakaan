@@ -1,11 +1,13 @@
 package com.mycompany.perpustakaan.dao;
 
+import com.mycompany.perpustakaan.api.BookRequest;
 import com.mycompany.perpustakaan.config.Database;
 import com.mycompany.perpustakaan.model.Buku;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -124,6 +126,99 @@ public class BukuDao {
         }
 
         return categories;
+    }
+
+    public Buku findById(int idBuku) throws SQLException {
+        String sql = "SELECT id_buku, kode_buku, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by, created_at FROM buku WHERE id_buku = ? LIMIT 1";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, idBuku);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    return null;
+                }
+                return mapBuku(resultSet);
+            }
+        }
+    }
+
+    public Buku insert(BookRequest request, int createdBy) throws SQLException {
+        String sql = "INSERT INTO buku (kode_buku, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            fillBookStatement(statement, request);
+            statement.setInt(9, createdBy);
+            statement.executeUpdate();
+
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (!generatedKeys.next()) {
+                    throw new SQLException("Gagal mengambil id buku baru.");
+                }
+                return findById(generatedKeys.getInt(1));
+            }
+        }
+    }
+
+    public Buku update(int idBuku, BookRequest request) throws SQLException {
+        String sql = "UPDATE buku SET kode_buku = ?, judul = ?, penulis = ?, penerbit = ?, kategori = ?, tahun_terbit = ?, stok_tersedia = ?, stok_total = ? WHERE id_buku = ?";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            fillBookStatement(statement, request);
+            statement.setInt(9, idBuku);
+            if (statement.executeUpdate() == 0) {
+                return null;
+            }
+            return findById(idBuku);
+        }
+    }
+
+    public Buku updateStock(int idBuku, int stokTersedia, int stokTotal) throws SQLException {
+        String sql = "UPDATE buku SET stok_tersedia = ?, stok_total = ? WHERE id_buku = ?";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, stokTersedia);
+            statement.setInt(2, stokTotal);
+            statement.setInt(3, idBuku);
+            if (statement.executeUpdate() == 0) {
+                return null;
+            }
+            return findById(idBuku);
+        }
+    }
+
+    public boolean deleteById(int idBuku) throws SQLException {
+        String sql = "DELETE FROM buku WHERE id_buku = ?";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, idBuku);
+            return statement.executeUpdate() > 0;
+        }
+    }
+
+    private void fillBookStatement(PreparedStatement statement, BookRequest request) throws SQLException {
+        statement.setString(1, request.getKodeBuku());
+        statement.setString(2, request.getJudul());
+        statement.setString(3, request.getPenulis());
+        statement.setString(4, request.getPenerbit());
+        statement.setString(5, request.getKategori());
+        if (request.getTahunTerbit() == null) {
+            statement.setNull(6, java.sql.Types.INTEGER);
+        } else {
+            statement.setInt(6, request.getTahunTerbit());
+        }
+        statement.setInt(7, request.getStokTersedia());
+        statement.setInt(8, request.getStokTotal());
     }
 
     private void appendBookshelfFilters(StringBuilder sql, List<Object> parameters, String keyword, String kategori) {

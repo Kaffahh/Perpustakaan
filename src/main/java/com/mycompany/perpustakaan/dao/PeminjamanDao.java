@@ -48,6 +48,24 @@ public class PeminjamanDao {
         return 0;
     }
 
+    public int countLoansByBook(int idBuku) throws SQLException {
+        String sql = "SELECT COUNT(*) AS total FROM peminjaman WHERE id_buku = ?";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, idBuku);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("total");
+                }
+            }
+        }
+
+        return 0;
+    }
+
     public Peminjaman createLoan(int idUser, int idBuku, LocalDate tanggalPinjam, LocalDate tanggalJatuhTempo, Integer createdBy) throws SQLException {
         String selectBookSql = "SELECT stok_tersedia FROM buku WHERE id_buku = ? FOR UPDATE";
         String insertLoanSql = "INSERT INTO peminjaman (id_user, id_buku, tanggal_pinjam, tanggal_jatuh_tempo, status, denda, created_by) VALUES (?, ?, ?, ?, 'dipinjam', 0.00, ?)";
