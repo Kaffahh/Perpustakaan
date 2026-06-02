@@ -66,6 +66,89 @@ public class BukuDao {
         return books;
     }
 
+    public List<Buku> findBooks(String keyword, String kategori, int limit, int offset) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT id_buku, kode_buku, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by, created_at FROM buku WHERE 1=1");
+        List<Object> parameters = new ArrayList<>();
+
+        appendBookshelfFilters(sql, parameters, keyword, kategori);
+        sql.append(" ORDER BY judul ASC, id_buku ASC LIMIT ? OFFSET ?");
+        parameters.add(limit);
+        parameters.add(offset);
+
+        List<Buku> books = new ArrayList<>();
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            setParameters(statement, parameters);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    books.add(mapBuku(resultSet));
+                }
+            }
+        }
+
+        return books;
+    }
+
+    public int countBooks(String keyword, String kategori) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM buku WHERE 1=1");
+        List<Object> parameters = new ArrayList<>();
+
+        appendBookshelfFilters(sql, parameters, keyword, kategori);
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            setParameters(statement, parameters);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("total");
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    public List<String> findCategories() throws SQLException {
+        String sql = "SELECT DISTINCT kategori FROM buku WHERE kategori IS NOT NULL AND kategori <> '' ORDER BY kategori ASC";
+        List<String> categories = new ArrayList<>();
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+                categories.add(resultSet.getString("kategori"));
+            }
+        }
+
+        return categories;
+    }
+
+    private void appendBookshelfFilters(StringBuilder sql, List<Object> parameters, String keyword, String kategori) {
+        if (keyword != null) {
+            String pattern = "%" + keyword + "%";
+            sql.append(" AND (judul LIKE ? OR penulis LIKE ? OR penerbit LIKE ? OR kategori LIKE ? OR kode_buku LIKE ?)");
+            parameters.add(pattern);
+            parameters.add(pattern);
+            parameters.add(pattern);
+            parameters.add(pattern);
+            parameters.add(pattern);
+        }
+
+        if (kategori != null) {
+            sql.append(" AND kategori = ?");
+            parameters.add(kategori);
+        }
+    }
+
+    private void setParameters(PreparedStatement statement, List<Object> parameters) throws SQLException {
+        for (int index = 0; index < parameters.size(); index++) {
+            statement.setObject(index + 1, parameters.get(index));
+        }
+    }
+
     private Buku mapBuku(ResultSet resultSet) throws SQLException {
         int idBuku = resultSet.getInt("id_buku");
         String kodeBuku = resultSet.getString("kode_buku");
