@@ -118,6 +118,65 @@ public class PeminjamanDao {
         }
     }
 
+    public List<Peminjaman> findLoanHistoryByUser(int idUser, String status, int limit, int offset) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku WHERE p.id_user = ?");
+        List<Object> parameters = new ArrayList<>();
+        parameters.add(idUser);
+
+        appendHistoryStatusFilter(sql, parameters, status);
+        sql.append(" ORDER BY p.tanggal_pinjam DESC, p.id_peminjaman DESC LIMIT ? OFFSET ?");
+        parameters.add(limit);
+        parameters.add(offset);
+
+        List<Peminjaman> loans = new ArrayList<>();
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            setParameters(statement, parameters);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    loans.add(mapPeminjaman(resultSet));
+                }
+            }
+        }
+
+        return loans;
+    }
+
+    public int countLoanHistoryByUser(int idUser, String status) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM peminjaman p WHERE p.id_user = ?");
+        List<Object> parameters = new ArrayList<>();
+        parameters.add(idUser);
+
+        appendHistoryStatusFilter(sql, parameters, status);
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            setParameters(statement, parameters);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("total");
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    private void appendHistoryStatusFilter(StringBuilder sql, List<Object> parameters, String status) {
+        if (status != null) {
+            sql.append(" AND p.status = ?");
+            parameters.add(status);
+        }
+    }
+
+    private void setParameters(PreparedStatement statement, List<Object> parameters) throws SQLException {
+        for (int index = 0; index < parameters.size(); index++) {
+            statement.setObject(index + 1, parameters.get(index));
+        }
+    }
+
     private int getLockedBookStock(Connection connection, String sql, int idBuku) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, idBuku);
