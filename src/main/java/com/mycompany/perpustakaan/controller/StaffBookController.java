@@ -21,24 +21,16 @@ public class StaffBookController {
 
     public Buku addBook(BookRequest request) throws SQLException {
         User currentUser = requireStaffOrAdmin();
-<<<<<<< HEAD
-        return bukuDao.insert(validateBookRequest(request), currentUser.getIdUser());
-=======
         BookRequest safeRequest = validateBookRequest(request);
         return bukuDao.insert(safeRequest, currentUser.getIdUser());
->>>>>>> develop
     }
 
     public Buku updateBook(int idBuku, BookRequest request) throws SQLException {
         requireStaffOrAdmin();
         validateIdBuku(idBuku);
 
-<<<<<<< HEAD
-        Buku updatedBook = bukuDao.update(idBuku, validateBookRequest(request));
-=======
         BookRequest safeRequest = validateBookRequest(request);
         Buku updatedBook = bukuDao.update(idBuku, safeRequest);
->>>>>>> develop
         if (updatedBook == null) {
             throw new IllegalStateException("Buku tidak ditemukan.");
         }

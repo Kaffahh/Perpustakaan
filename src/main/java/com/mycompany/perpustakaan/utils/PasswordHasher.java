@@ -7,6 +7,13 @@ public class PasswordHasher {
     private PasswordHasher() {
     }
 
+    public static String hash(String plainPassword) {
+        if (plainPassword == null || plainPassword.isBlank()) {
+            throw new IllegalArgumentException("Password wajib diisi.");
+        }
+        return BCrypt.hashpw(plainPassword, BCrypt.gensalt());
+    }
+
     public static boolean matches(String plainPassword, String storedPassword) {
         if (plainPassword == null || storedPassword == null) {
             return false;

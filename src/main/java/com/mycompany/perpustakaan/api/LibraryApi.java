@@ -5,11 +5,9 @@ import com.mycompany.perpustakaan.controller.BookshelfController;
 import com.mycompany.perpustakaan.controller.DashboardController;
 import com.mycompany.perpustakaan.controller.HistoryController;
 import com.mycompany.perpustakaan.controller.LoanController;
+import com.mycompany.perpustakaan.controller.MemberController;
 import com.mycompany.perpustakaan.controller.StaffBookController;
-<<<<<<< HEAD
 import com.mycompany.perpustakaan.controller.StaffLoanReturnController;
-=======
->>>>>>> develop
 import com.mycompany.perpustakaan.controller.VisitController;
 import com.mycompany.perpustakaan.model.Buku;
 import com.mycompany.perpustakaan.model.Kunjungan;
@@ -31,10 +29,8 @@ public class LibraryApi {
     private final HistoryController historyController;
     private final VisitController visitController;
     private final StaffBookController staffBookController;
-<<<<<<< HEAD
     private final StaffLoanReturnController staffLoanReturnController;
-=======
->>>>>>> develop
+    private final MemberController memberController;
 
     public LibraryApi() {
         this.authController = new AuthController();
@@ -44,10 +40,8 @@ public class LibraryApi {
         this.historyController = new HistoryController();
         this.visitController = new VisitController();
         this.staffBookController = new StaffBookController();
-<<<<<<< HEAD
         this.staffLoanReturnController = new StaffLoanReturnController();
-=======
->>>>>>> develop
+        this.memberController = new MemberController();
     }
 
     public AuthResponse login(String username, String password) throws SQLException {
@@ -206,7 +200,6 @@ public class LibraryApi {
         return BookSummary.from(staffBookController.getBookById(idBuku));
     }
 
-<<<<<<< HEAD
     public LoanResponse createLoanForUser(int idUser, int idBuku, int loanDays) throws SQLException {
         try {
             Peminjaman peminjaman = staffLoanReturnController.createLoanForUser(idUser, idBuku, loanDays);
@@ -235,8 +228,61 @@ public class LibraryApi {
                 result.getStatus());
     }
 
-=======
->>>>>>> develop
+    public MemberResponse addMember(MemberRequest request) throws SQLException {
+        try {
+            User member = memberController.addMember(request);
+            return MemberResponse.success("Anggota berhasil ditambahkan.", MemberSummary.from(member));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return MemberResponse.failure(exception.getMessage());
+        }
+    }
+
+    public MemberResponse updateMember(int idUser, MemberRequest request) throws SQLException {
+        try {
+            User member = memberController.updateMember(idUser, request);
+            return MemberResponse.success("Anggota berhasil diperbarui.", MemberSummary.from(member));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return MemberResponse.failure(exception.getMessage());
+        }
+    }
+
+    public MemberResponse suspendMember(int idUser) throws SQLException {
+        try {
+            User member = memberController.suspendMember(idUser);
+            return MemberResponse.success("Anggota berhasil disuspend.", MemberSummary.from(member));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return MemberResponse.failure(exception.getMessage());
+        }
+    }
+
+    public MemberResponse activateMember(int idUser) throws SQLException {
+        try {
+            User member = memberController.activateMember(idUser);
+            return MemberResponse.success("Anggota berhasil diaktifkan.", MemberSummary.from(member));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return MemberResponse.failure(exception.getMessage());
+        }
+    }
+
+    public MemberResponse deleteMember(int idUser) throws SQLException {
+        try {
+            memberController.deleteMember(idUser);
+            return MemberResponse.success("Anggota berhasil dihapus.", null);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return MemberResponse.failure(exception.getMessage());
+        }
+    }
+
+    public MemberPage searchMembers(String keyword, String statusAkun, int page, int pageSize) throws SQLException {
+        int safePage = memberController.normalizePage(page);
+        int safePageSize = memberController.normalizePageSize(pageSize);
+        String safeStatus = memberController.normalizeStatus(statusAkun);
+        List<User> members = memberController.searchMembers(keyword, safeStatus, safePage, safePageSize);
+        int totalItems = memberController.countMembers(keyword, safeStatus);
+
+        return new MemberPage(toMemberSummaries(members), totalItems, safePage, safePageSize, normalizeText(keyword), safeStatus);
+    }
+
     public DashboardSummary getDashboardSummary(int latestLimit) throws SQLException {
         return new DashboardSummary(getCurrentUser(), getTotalBooks(), getLatestBooks(latestLimit));
     }
@@ -253,6 +299,14 @@ public class LibraryApi {
         List<LoanSummary> summaries = new ArrayList<>();
         for (Peminjaman loan : loans) {
             summaries.add(toLoanSummary(loan));
+        }
+        return summaries;
+    }
+
+    private List<MemberSummary> toMemberSummaries(List<User> members) {
+        List<MemberSummary> summaries = new ArrayList<>();
+        for (User member : members) {
+            summaries.add(MemberSummary.from(member));
         }
         return summaries;
     }

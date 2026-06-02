@@ -8,15 +8,21 @@ public class User {
     private final String username;
     private final String password;
     private final String role;
+    private final String statusAkun;
     private final String createdAt;
 
     public User(int idUser, String nama, String email, String username, String password, String role, String createdAt) {
+        this(idUser, nama, email, username, password, role, "aktif", createdAt);
+    }
+
+    public User(int idUser, String nama, String email, String username, String password, String role, String statusAkun, String createdAt) {
         this.idUser = idUser;
         this.nama = nama;
         this.email = email;
         this.username = username;
         this.password = password;
         this.role = role;
+        this.statusAkun = statusAkun == null ? "aktif" : statusAkun;
         this.createdAt = createdAt;
     }
 
@@ -44,6 +50,10 @@ public class User {
         return role;
     }
 
+    public String getStatusAkun() {
+        return statusAkun;
+    }
+
     public String getCreatedAt() {
         return createdAt;
     }
@@ -58,6 +68,10 @@ public class User {
 
     public boolean isAnggota() {
         return hasRole("anggota") || hasRole("member") || hasRole("user");
+    }
+
+    public boolean isSuspended() {
+        return statusAkun != null && statusAkun.equalsIgnoreCase("suspend");
     }
 
     private boolean hasRole(String expectedRole) {
