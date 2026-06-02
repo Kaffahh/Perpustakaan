@@ -1,6 +1,8 @@
-package com.mycompany.perpustakaan.model;
+package com.mycompany.perpustakaan.api;
 
-public class Buku {
+import com.mycompany.perpustakaan.model.Buku;
+
+public class BookSummary {
 
     private final int idBuku;
     private final String kodeBuku;
@@ -14,7 +16,7 @@ public class Buku {
     private final Integer createdBy;
     private final String createdAt;
 
-    public Buku(int idBuku, String kodeBuku, String judul, String penulis, String penerbit, String kategori, Integer tahunTerbit, int stokTersedia, int stokTotal, Integer createdBy, String createdAt) {
+    public BookSummary(int idBuku, String kodeBuku, String judul, String penulis, String penerbit, String kategori, Integer tahunTerbit, int stokTersedia, int stokTotal, Integer createdBy, String createdAt) {
         this.idBuku = idBuku;
         this.kodeBuku = kodeBuku;
         this.judul = judul;
@@ -26,6 +28,24 @@ public class Buku {
         this.stokTotal = stokTotal;
         this.createdBy = createdBy;
         this.createdAt = createdAt;
+    }
+
+    public static BookSummary from(Buku buku) {
+        if (buku == null) {
+            return null;
+        }
+        return new BookSummary(
+                buku.getIdBuku(),
+                buku.getKodeBuku(),
+                buku.getJudul(),
+                buku.getPenulis(),
+                buku.getPenerbit(),
+                buku.getKategori(),
+                buku.getTahunTerbit(),
+                buku.getStokTersedia(),
+                buku.getStokTotal(),
+                buku.getCreatedBy(),
+                buku.getCreatedAt());
     }
 
     public int getIdBuku() {

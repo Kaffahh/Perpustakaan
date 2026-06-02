@@ -1,4 +1,19 @@
-# Perpustakaan Backend
+# LibraryApp Backend
+
+## Contract
+
+Backend ini mengekspor service API Java yang bisa dipakai langsung oleh frontend Swing dalam monorepo yang sama.
+
+### Entry points
+- `com.mycompany.perpustakaan.api.LibraryApi`
+- `com.mycompany.perpustakaan.controller.AuthController`
+- `com.mycompany.perpustakaan.controller.DashboardController`
+
+### DTO contract
+- `com.mycompany.perpustakaan.api.AuthResponse`
+- `com.mycompany.perpustakaan.api.UserSummary`
+- `com.mycompany.perpustakaan.api.BookSummary`
+- `com.mycompany.perpustakaan.api.DashboardSummary`
 
 ## User Dashboard Demo
 

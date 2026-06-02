@@ -1,0 +1,67 @@
+package com.mycompany.perpustakaan.api;
+
+import com.mycompany.perpustakaan.controller.AuthController;
+import com.mycompany.perpustakaan.controller.DashboardController;
+import com.mycompany.perpustakaan.model.Buku;
+import com.mycompany.perpustakaan.model.User;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class LibraryApi {
+
+    private final AuthController authController;
+    private final DashboardController dashboardController;
+
+    public LibraryApi() {
+        this.authController = new AuthController();
+        this.dashboardController = new DashboardController();
+    }
+
+    public AuthResponse login(String username, String password) throws SQLException {
+        User user = authController.login(username, password);
+        if (user == null) {
+            return AuthResponse.failure("Username atau password salah.");
+        }
+
+        return AuthResponse.success("Login berhasil.", UserSummary.from(user));
+    }
+
+    public void logout() {
+        authController.logout();
+    }
+
+    public boolean isLoggedIn() {
+        return authController.isLoggedIn();
+    }
+
+    public UserSummary getCurrentUser() {
+        return UserSummary.from(authController.getCurrentUser());
+    }
+
+    public int getTotalBooks() throws SQLException {
+        return dashboardController.getTotalBooks();
+    }
+
+    public List<BookSummary> getLatestBooks(int limit) throws SQLException {
+        List<Buku> books = dashboardController.getLatestBooks(limit);
+        return toBookSummaries(books);
+    }
+
+    public List<BookSummary> searchBooks(String keyword, int limit, int offset) throws SQLException {
+        List<Buku> books = dashboardController.searchBooks(keyword, limit, offset);
+        return toBookSummaries(books);
+    }
+
+    public DashboardSummary getDashboardSummary(int latestLimit) throws SQLException {
+        return new DashboardSummary(getCurrentUser(), getTotalBooks(), getLatestBooks(latestLimit));
+    }
+
+    private List<BookSummary> toBookSummaries(List<Buku> books) {
+        List<BookSummary> summaries = new ArrayList<>();
+        for (Buku book : books) {
+            summaries.add(BookSummary.from(book));
+        }
+        return summaries;
+    }
+}

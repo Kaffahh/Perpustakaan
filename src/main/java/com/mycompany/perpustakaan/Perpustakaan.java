@@ -1,8 +1,8 @@
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- */
-
-package com.mycompany.perpustakaan;
+        System.out.println("LibraryApp Backend siap.");
+        System.out.println("API contract tersedia di com.mycompany.perpustakaan.api.LibraryApi.");
+        System.out.println("Jalankan com.mycompany.perpustakaan.test.TestDatabaseConnection untuk uji koneksi database.");
 
 /**
  *

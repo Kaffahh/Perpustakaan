@@ -22,15 +22,8 @@ public class DashboardController {
         if (!SessionManager.isLoggedIn()) {
             return null;
         }
-<<<<<<< HEAD
-
         User currentUser = SessionManager.getCurrentUser();
         return userDao.findById(currentUser.getIdUser());
-=======
-        User sessionUser = SessionManager.getCurrentUser();
-        // refresh from DB to get latest fields
-        return userDao.findById(sessionUser.getIdUser());
->>>>>>> 971d3bf3dfadeb3f2eb35438307861006fcebde6
     }
 
     public int getTotalBooks() throws SQLException {
@@ -44,8 +37,4 @@ public class DashboardController {
     public List<Buku> searchBooks(String keyword, int limit, int offset) throws SQLException {
         return bukuDao.search(keyword, limit, offset);
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 971d3bf3dfadeb3f2eb35438307861006fcebde6
