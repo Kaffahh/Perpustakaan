@@ -24,9 +24,6 @@ public class TestStaffBookManagement {
 
             System.out.println("Login berhasil: " + authResponse.getUser().getUsername() + " | role=" + authResponse.getUser().getRole());
 
-<<<<<<< HEAD
-            BookRequest createRequest = new BookRequest(uniqueCode, "Buku Demo Staff", "Backend Tester", "Codex Press", "Demo", 2026, 3, 5);
-=======
             BookRequest createRequest = new BookRequest(
                     uniqueCode,
                     "Buku Demo Staff",
@@ -36,7 +33,6 @@ public class TestStaffBookManagement {
                     2026,
                     3,
                     5);
->>>>>>> develop
             BookResponse createResponse = libraryApi.addBook(createRequest);
             printBookResponse("TAMBAH BUKU", createResponse);
             if (!createResponse.isSuccess()) {
@@ -44,16 +40,6 @@ public class TestStaffBookManagement {
             }
 
             int idBuku = createResponse.getBook().getIdBuku();
-<<<<<<< HEAD
-            BookRequest updateRequest = new BookRequest(uniqueCode, "Buku Demo Staff Updated", "Backend Tester", "Codex Press", "Demo Updated", 2026, 4, 6);
-
-            printBookResponse("UPDATE BUKU", libraryApi.updateBook(idBuku, updateRequest));
-            printBookResponse("UPDATE STOK", libraryApi.updateBookStock(idBuku, 2, 6));
-
-            System.out.println();
-            System.out.println("DETAIL SETELAH UPDATE");
-            printBook(libraryApi.getBookByIdForManagement(idBuku));
-=======
 
             BookRequest updateRequest = new BookRequest(
                     uniqueCode,
@@ -71,7 +57,6 @@ public class TestStaffBookManagement {
             System.out.println();
             System.out.println("DETAIL SETELAH UPDATE");
             printBook(detail);
->>>>>>> develop
 
             printBookResponse("HAPUS BUKU", libraryApi.deleteBook(idBuku));
             libraryApi.logout();

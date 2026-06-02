@@ -28,6 +28,10 @@ public class AuthController {
             return null;
         }
 
+        if (user.isSuspended()) {
+            throw new IllegalStateException("Akun sedang disuspend.");
+        }
+
         SessionManager.setCurrentUser(user);
         return user;
     }
