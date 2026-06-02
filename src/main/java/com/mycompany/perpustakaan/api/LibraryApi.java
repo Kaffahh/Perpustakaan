@@ -5,6 +5,7 @@ import com.mycompany.perpustakaan.controller.BookshelfController;
 import com.mycompany.perpustakaan.controller.DashboardController;
 import com.mycompany.perpustakaan.controller.HistoryController;
 import com.mycompany.perpustakaan.controller.LoanController;
+import com.mycompany.perpustakaan.controller.StaffBookController;
 import com.mycompany.perpustakaan.controller.VisitController;
 import com.mycompany.perpustakaan.model.Buku;
 import com.mycompany.perpustakaan.model.Kunjungan;
@@ -25,6 +26,7 @@ public class LibraryApi {
     private final LoanController loanController;
     private final HistoryController historyController;
     private final VisitController visitController;
+    private final StaffBookController staffBookController;
 
     public LibraryApi() {
         this.authController = new AuthController();
@@ -33,6 +35,7 @@ public class LibraryApi {
         this.loanController = new LoanController();
         this.historyController = new HistoryController();
         this.visitController = new VisitController();
+        this.staffBookController = new StaffBookController();
     }
 
     public AuthResponse login(String username, String password) throws SQLException {
@@ -149,6 +152,46 @@ public class LibraryApi {
 
     public VisitSummary getVisitById(int idKunjungan) throws SQLException {
         return VisitSummary.from(visitController.getVisitById(idKunjungan));
+    }
+
+    public BookResponse addBook(BookRequest request) throws SQLException {
+        try {
+            Buku book = staffBookController.addBook(request);
+            return BookResponse.success("Buku berhasil ditambahkan.", BookSummary.from(book));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return BookResponse.failure(exception.getMessage());
+        }
+    }
+
+    public BookResponse updateBook(int idBuku, BookRequest request) throws SQLException {
+        try {
+            Buku book = staffBookController.updateBook(idBuku, request);
+            return BookResponse.success("Buku berhasil diperbarui.", BookSummary.from(book));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return BookResponse.failure(exception.getMessage());
+        }
+    }
+
+    public BookResponse updateBookStock(int idBuku, int stokTersedia, int stokTotal) throws SQLException {
+        try {
+            Buku book = staffBookController.updateStock(idBuku, stokTersedia, stokTotal);
+            return BookResponse.success("Stok buku berhasil diperbarui.", BookSummary.from(book));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return BookResponse.failure(exception.getMessage());
+        }
+    }
+
+    public BookResponse deleteBook(int idBuku) throws SQLException {
+        try {
+            staffBookController.deleteBook(idBuku);
+            return BookResponse.success("Buku berhasil dihapus.", null);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return BookResponse.failure(exception.getMessage());
+        }
+    }
+
+    public BookSummary getBookByIdForManagement(int idBuku) throws SQLException {
+        return BookSummary.from(staffBookController.getBookById(idBuku));
     }
 
     public DashboardSummary getDashboardSummary(int latestLimit) throws SQLException {
