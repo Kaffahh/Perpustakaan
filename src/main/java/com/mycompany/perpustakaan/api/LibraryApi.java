@@ -1,6 +1,7 @@
 package com.mycompany.perpustakaan.api;
 
 import com.mycompany.perpustakaan.controller.AuthController;
+import com.mycompany.perpustakaan.controller.BookshelfController;
 import com.mycompany.perpustakaan.controller.DashboardController;
 import com.mycompany.perpustakaan.model.Buku;
 import com.mycompany.perpustakaan.model.User;
@@ -12,10 +13,12 @@ public class LibraryApi {
 
     private final AuthController authController;
     private final DashboardController dashboardController;
+    private final BookshelfController bookshelfController;
 
     public LibraryApi() {
         this.authController = new AuthController();
         this.dashboardController = new DashboardController();
+        this.bookshelfController = new BookshelfController();
     }
 
     public AuthResponse login(String username, String password) throws SQLException {
@@ -53,6 +56,19 @@ public class LibraryApi {
         return toBookSummaries(books);
     }
 
+    public BookshelfPage getBookshelfPage(String keyword, String kategori, int page, int pageSize) throws SQLException {
+        int safePage = bookshelfController.normalizePage(page);
+        int safePageSize = bookshelfController.normalizePageSize(pageSize);
+        List<Buku> books = bookshelfController.getBooks(keyword, kategori, safePage, safePageSize);
+        int totalItems = bookshelfController.countBooks(keyword, kategori);
+
+        return new BookshelfPage(toBookSummaries(books), totalItems, safePage, safePageSize, normalizeText(keyword), normalizeText(kategori));
+    }
+
+    public List<String> getBookCategories() throws SQLException {
+        return bookshelfController.getCategories();
+    }
+
     public DashboardSummary getDashboardSummary(int latestLimit) throws SQLException {
         return new DashboardSummary(getCurrentUser(), getTotalBooks(), getLatestBooks(latestLimit));
     }
@@ -63,5 +79,12 @@ public class LibraryApi {
             summaries.add(BookSummary.from(book));
         }
         return summaries;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }
