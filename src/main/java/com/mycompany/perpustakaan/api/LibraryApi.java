@@ -5,7 +5,9 @@ import com.mycompany.perpustakaan.controller.BookshelfController;
 import com.mycompany.perpustakaan.controller.DashboardController;
 import com.mycompany.perpustakaan.controller.HistoryController;
 import com.mycompany.perpustakaan.controller.LoanController;
+import com.mycompany.perpustakaan.controller.VisitController;
 import com.mycompany.perpustakaan.model.Buku;
+import com.mycompany.perpustakaan.model.Kunjungan;
 import com.mycompany.perpustakaan.model.Peminjaman;
 import com.mycompany.perpustakaan.model.User;
 import com.mycompany.perpustakaan.utils.FineCalculator;
@@ -22,6 +24,7 @@ public class LibraryApi {
     private final BookshelfController bookshelfController;
     private final LoanController loanController;
     private final HistoryController historyController;
+    private final VisitController visitController;
 
     public LibraryApi() {
         this.authController = new AuthController();
@@ -29,6 +32,7 @@ public class LibraryApi {
         this.bookshelfController = new BookshelfController();
         this.loanController = new LoanController();
         this.historyController = new HistoryController();
+        this.visitController = new VisitController();
     }
 
     public AuthResponse login(String username, String password) throws SQLException {
@@ -105,6 +109,46 @@ public class LibraryApi {
         } catch (IllegalArgumentException | IllegalStateException exception) {
             throw exception;
         }
+    }
+
+    public VisitResponse addRegisteredUserVisit(String jenisPengunjung, String asalInstansi, String keperluan) throws SQLException {
+        try {
+            Kunjungan kunjungan = visitController.addRegisteredUserVisit(jenisPengunjung, asalInstansi, keperluan);
+            return VisitResponse.success("Kunjungan user terdaftar berhasil ditambahkan.", VisitSummary.from(kunjungan));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return VisitResponse.failure(exception.getMessage());
+        }
+    }
+
+    public VisitResponse addGuestVisit(String namaPengunjung, String jenisPengunjung, String asalInstansi, String keperluan) throws SQLException {
+        try {
+            Kunjungan kunjungan = visitController.addGuestVisit(namaPengunjung, jenisPengunjung, asalInstansi, keperluan);
+            return VisitResponse.success("Kunjungan tamu berhasil ditambahkan.", VisitSummary.from(kunjungan));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return VisitResponse.failure(exception.getMessage());
+        }
+    }
+
+    public VisitResponse finishVisit(int idKunjungan) throws SQLException {
+        try {
+            Kunjungan kunjungan = visitController.finishVisit(idKunjungan);
+            return VisitResponse.success("Status kunjungan berhasil diubah menjadi selesai.", VisitSummary.from(kunjungan));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return VisitResponse.failure(exception.getMessage());
+        }
+    }
+
+    public VisitResponse cancelVisit(int idKunjungan) throws SQLException {
+        try {
+            Kunjungan kunjungan = visitController.cancelVisit(idKunjungan);
+            return VisitResponse.success("Status kunjungan berhasil diubah menjadi batal.", VisitSummary.from(kunjungan));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return VisitResponse.failure(exception.getMessage());
+        }
+    }
+
+    public VisitSummary getVisitById(int idKunjungan) throws SQLException {
+        return VisitSummary.from(visitController.getVisitById(idKunjungan));
     }
 
     public DashboardSummary getDashboardSummary(int latestLimit) throws SQLException {
