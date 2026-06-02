@@ -172,12 +172,8 @@ public class BukuDao {
 
             fillBookStatement(statement, request);
             statement.setInt(9, idBuku);
-<<<<<<< HEAD
-            if (statement.executeUpdate() == 0) {
-=======
             int updatedRows = statement.executeUpdate();
             if (updatedRows == 0) {
->>>>>>> develop
                 return null;
             }
             return findById(idBuku);
@@ -193,12 +189,8 @@ public class BukuDao {
             statement.setInt(1, stokTersedia);
             statement.setInt(2, stokTotal);
             statement.setInt(3, idBuku);
-<<<<<<< HEAD
-            if (statement.executeUpdate() == 0) {
-=======
             int updatedRows = statement.executeUpdate();
             if (updatedRows == 0) {
->>>>>>> develop
                 return null;
             }
             return findById(idBuku);

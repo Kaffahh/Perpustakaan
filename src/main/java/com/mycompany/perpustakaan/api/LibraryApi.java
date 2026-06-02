@@ -1,21 +1,20 @@
 package com.mycompany.perpustakaan.api;
 
+import com.mycompany.perpustakaan.controller.AdminReportController;
 import com.mycompany.perpustakaan.controller.AuthController;
 import com.mycompany.perpustakaan.controller.BookshelfController;
 import com.mycompany.perpustakaan.controller.DashboardController;
 import com.mycompany.perpustakaan.controller.HistoryController;
 import com.mycompany.perpustakaan.controller.LoanController;
 import com.mycompany.perpustakaan.controller.StaffBookController;
-<<<<<<< HEAD
 import com.mycompany.perpustakaan.controller.StaffLoanReturnController;
-=======
->>>>>>> develop
 import com.mycompany.perpustakaan.controller.VisitController;
 import com.mycompany.perpustakaan.model.Buku;
 import com.mycompany.perpustakaan.model.Kunjungan;
 import com.mycompany.perpustakaan.model.Peminjaman;
 import com.mycompany.perpustakaan.model.User;
 import com.mycompany.perpustakaan.utils.FineCalculator;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -31,10 +30,8 @@ public class LibraryApi {
     private final HistoryController historyController;
     private final VisitController visitController;
     private final StaffBookController staffBookController;
-<<<<<<< HEAD
     private final StaffLoanReturnController staffLoanReturnController;
-=======
->>>>>>> develop
+    private final AdminReportController adminReportController;
 
     public LibraryApi() {
         this.authController = new AuthController();
@@ -44,10 +41,8 @@ public class LibraryApi {
         this.historyController = new HistoryController();
         this.visitController = new VisitController();
         this.staffBookController = new StaffBookController();
-<<<<<<< HEAD
         this.staffLoanReturnController = new StaffLoanReturnController();
-=======
->>>>>>> develop
+        this.adminReportController = new AdminReportController();
     }
 
     public AuthResponse login(String username, String password) throws SQLException {
@@ -206,7 +201,6 @@ public class LibraryApi {
         return BookSummary.from(staffBookController.getBookById(idBuku));
     }
 
-<<<<<<< HEAD
     public LoanResponse createLoanForUser(int idUser, int idBuku, int loanDays) throws SQLException {
         try {
             Peminjaman peminjaman = staffLoanReturnController.createLoanForUser(idUser, idBuku, loanDays);
@@ -235,8 +229,36 @@ public class LibraryApi {
                 result.getStatus());
     }
 
-=======
->>>>>>> develop
+    public AdminDashboardSummary getAdminDashboardSummary() throws SQLException {
+        return adminReportController.getAdminDashboardSummary();
+    }
+
+    public List<InventoryReportRow> getInventoryReport() throws SQLException {
+        return adminReportController.getInventoryReport();
+    }
+
+    public List<LoanReportRow> getLoanReport(LocalDate startDate, LocalDate endDate) throws SQLException {
+        return adminReportController.getLoanReport(startDate, endDate);
+    }
+
+    public ReportExportResponse exportInventoryReport(String format, String outputDirectory) throws SQLException {
+        try {
+            String filePath = adminReportController.exportInventoryReport(format, outputDirectory).toAbsolutePath().toString();
+            return ReportExportResponse.success("Laporan inventory berhasil diexport.", filePath, adminReportController.normalizeFormat(format));
+        } catch (IllegalArgumentException | IllegalStateException | IOException exception) {
+            return ReportExportResponse.failure(exception.getMessage());
+        }
+    }
+
+    public ReportExportResponse exportLoanReport(String format, String outputDirectory, LocalDate startDate, LocalDate endDate) throws SQLException {
+        try {
+            String filePath = adminReportController.exportLoanReport(format, outputDirectory, startDate, endDate).toAbsolutePath().toString();
+            return ReportExportResponse.success("Laporan peminjaman berhasil diexport.", filePath, adminReportController.normalizeFormat(format));
+        } catch (IllegalArgumentException | IllegalStateException | IOException exception) {
+            return ReportExportResponse.failure(exception.getMessage());
+        }
+    }
+
     public DashboardSummary getDashboardSummary(int latestLimit) throws SQLException {
         return new DashboardSummary(getCurrentUser(), getTotalBooks(), getLatestBooks(latestLimit));
     }
