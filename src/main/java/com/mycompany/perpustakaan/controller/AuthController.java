@@ -1,5 +1,6 @@
 package com.mycompany.perpustakaan.controller;
 
+import com.mycompany.perpustakaan.api.MemberRequest;
 import com.mycompany.perpustakaan.dao.UserDao;
 import com.mycompany.perpustakaan.model.User;
 import com.mycompany.perpustakaan.utils.PasswordHasher;
@@ -36,6 +37,16 @@ public class AuthController {
         return user;
     }
 
+    public User register(MemberRequest request) throws SQLException {
+        MemberRequest safeRequest = validateRegisterRequest(request);
+        if (userDao.findByUsername(safeRequest.getUsername()) != null) {
+            throw new IllegalArgumentException("Username sudah terdaftar.");
+        }
+
+        String hashedPassword = PasswordHasher.hash(safeRequest.getPassword());
+        return userDao.insertMember(safeRequest, hashedPassword);
+    }
+
     public void logout() {
         SessionManager.logout();
     }
@@ -65,5 +76,47 @@ public class AuthController {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private MemberRequest validateRegisterRequest(MemberRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Data register wajib diisi.");
+        }
+
+        String username = requireText(request.getUsername(), "Username wajib diisi.");
+        String nama = normalizeName(request.getNama(), username);
+        String email = normalizeEmail(request.getEmail());
+        String password = requireText(request.getPassword(), "Password wajib diisi.");
+
+        if (password.length() < 6) {
+            throw new IllegalArgumentException("Password minimal 6 karakter.");
+        }
+
+        return new MemberRequest(username, nama, email, password);
+    }
+
+    private String requireText(String value, String message) {
+        if (isBlank(value)) {
+            throw new IllegalArgumentException(message);
+        }
+        return value.trim();
+    }
+
+    private String normalizeName(String value, String username) {
+        if (isBlank(value)) {
+            return username;
+        }
+        return value.trim();
+    }
+
+    private String normalizeEmail(String value) {
+        if (isBlank(value)) {
+            return null;
+        }
+        String email = value.trim();
+        if (!email.contains("@")) {
+            throw new IllegalArgumentException("Format email tidak valid.");
+        }
+        return email;
     }
 }

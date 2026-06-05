@@ -57,6 +57,15 @@ public class LibraryApi {
         return AuthResponse.success("Login berhasil.", UserSummary.from(user));
     }
 
+    public MemberResponse register(MemberRequest request) throws SQLException {
+        try {
+            User member = authController.register(request);
+            return MemberResponse.success("Register berhasil. Silakan login.", MemberSummary.from(member));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return MemberResponse.failure(exception.getMessage());
+        }
+    }
+
     public void logout() {
         authController.logout();
     }
