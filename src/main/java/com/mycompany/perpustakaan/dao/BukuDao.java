@@ -27,7 +27,7 @@ public class BukuDao {
     }
 
     public List<Buku> findLatest(int limit) throws SQLException {
-        String sql = "SELECT id_buku, kode_buku, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by, created_at FROM buku ORDER BY created_at DESC, id_buku DESC LIMIT ?";
+        String sql = "SELECT " + selectBookColumns() + " FROM buku ORDER BY created_at DESC, id_buku DESC LIMIT ?";
         List<Buku> books = new ArrayList<>();
 
         try (Connection connection = Database.getConnection();
@@ -45,7 +45,9 @@ public class BukuDao {
     }
 
     public List<Buku> search(String keyword, int limit, int offset) throws SQLException {
-        String sql = "SELECT id_buku, kode_buku, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by, created_at FROM buku WHERE judul LIKE ? OR penulis LIKE ? OR kategori LIKE ? ORDER BY judul ASC, id_buku ASC LIMIT ? OFFSET ?";
+        boolean hasIsbn = hasIsbnColumn();
+        String isbnFilter = hasIsbn ? " OR isbn LIKE ?" : "";
+        String sql = "SELECT " + selectBookColumns(hasIsbn) + " FROM buku WHERE judul LIKE ? OR penulis LIKE ? OR kategori LIKE ?" + isbnFilter + " ORDER BY judul ASC, id_buku ASC LIMIT ? OFFSET ?";
         List<Buku> books = new ArrayList<>();
         String pattern = "%" + keyword + "%";
 
@@ -55,8 +57,12 @@ public class BukuDao {
             statement.setString(1, pattern);
             statement.setString(2, pattern);
             statement.setString(3, pattern);
-            statement.setInt(4, limit);
-            statement.setInt(5, offset);
+            int parameterIndex = 4;
+            if (hasIsbn) {
+                statement.setString(parameterIndex++, pattern);
+            }
+            statement.setInt(parameterIndex++, limit);
+            statement.setInt(parameterIndex, offset);
 
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
@@ -69,10 +75,11 @@ public class BukuDao {
     }
 
     public List<Buku> findBooks(String keyword, String kategori, int limit, int offset) throws SQLException {
-        StringBuilder sql = new StringBuilder("SELECT id_buku, kode_buku, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by, created_at FROM buku WHERE 1=1");
+        boolean hasIsbn = hasIsbnColumn();
+        StringBuilder sql = new StringBuilder("SELECT " + selectBookColumns(hasIsbn) + " FROM buku WHERE 1=1");
         List<Object> parameters = new ArrayList<>();
 
-        appendBookshelfFilters(sql, parameters, keyword, kategori);
+        appendBookshelfFilters(sql, parameters, keyword, kategori, hasIsbn);
         sql.append(" ORDER BY judul ASC, id_buku ASC LIMIT ? OFFSET ?");
         parameters.add(limit);
         parameters.add(offset);
@@ -93,10 +100,11 @@ public class BukuDao {
     }
 
     public int countBooks(String keyword, String kategori) throws SQLException {
+        boolean hasIsbn = hasIsbnColumn();
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM buku WHERE 1=1");
         List<Object> parameters = new ArrayList<>();
 
-        appendBookshelfFilters(sql, parameters, keyword, kategori);
+        appendBookshelfFilters(sql, parameters, keyword, kategori, hasIsbn);
 
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql.toString())) {
@@ -129,7 +137,7 @@ public class BukuDao {
     }
 
     public Buku findById(int idBuku) throws SQLException {
-        String sql = "SELECT id_buku, kode_buku, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by, created_at FROM buku WHERE id_buku = ? LIMIT 1";
+        String sql = "SELECT " + selectBookColumns() + " FROM buku WHERE id_buku = ? LIMIT 1";
 
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -146,13 +154,14 @@ public class BukuDao {
     }
 
     public Buku insert(BookRequest request, int createdBy) throws SQLException {
-        String sql = "INSERT INTO buku (kode_buku, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        ensureIsbnColumn();
+        String sql = "INSERT INTO buku (kode_buku, isbn, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connection = Database.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             fillBookStatement(statement, request);
-            statement.setInt(9, createdBy);
+            statement.setInt(10, createdBy);
             statement.executeUpdate();
 
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
@@ -165,13 +174,14 @@ public class BukuDao {
     }
 
     public Buku update(int idBuku, BookRequest request) throws SQLException {
-        String sql = "UPDATE buku SET kode_buku = ?, judul = ?, penulis = ?, penerbit = ?, kategori = ?, tahun_terbit = ?, stok_tersedia = ?, stok_total = ? WHERE id_buku = ?";
+        ensureIsbnColumn();
+        String sql = "UPDATE buku SET kode_buku = ?, isbn = ?, judul = ?, penulis = ?, penerbit = ?, kategori = ?, tahun_terbit = ?, stok_tersedia = ?, stok_total = ? WHERE id_buku = ?";
 
         try (Connection connection = Database.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+            PreparedStatement statement = connection.prepareStatement(sql)) {
 
             fillBookStatement(statement, request);
-            statement.setInt(9, idBuku);
+            statement.setInt(10, idBuku);
             int updatedRows = statement.executeUpdate();
             if (updatedRows == 0) {
                 return null;
@@ -210,28 +220,36 @@ public class BukuDao {
 
     private void fillBookStatement(PreparedStatement statement, BookRequest request) throws SQLException {
         statement.setString(1, request.getKodeBuku());
-        statement.setString(2, request.getJudul());
-        statement.setString(3, request.getPenulis());
-        statement.setString(4, request.getPenerbit());
-        statement.setString(5, request.getKategori());
+        statement.setString(2, request.getIsbn());
+        statement.setString(3, request.getJudul());
+        statement.setString(4, request.getPenulis());
+        statement.setString(5, request.getPenerbit());
+        statement.setString(6, request.getKategori());
         if (request.getTahunTerbit() == null) {
-            statement.setNull(6, java.sql.Types.INTEGER);
+            statement.setNull(7, java.sql.Types.INTEGER);
         } else {
-            statement.setInt(6, request.getTahunTerbit());
+            statement.setInt(7, request.getTahunTerbit());
         }
-        statement.setInt(7, request.getStokTersedia());
-        statement.setInt(8, request.getStokTotal());
+        statement.setInt(8, request.getStokTersedia());
+        statement.setInt(9, request.getStokTotal());
     }
 
-    private void appendBookshelfFilters(StringBuilder sql, List<Object> parameters, String keyword, String kategori) {
+    private void appendBookshelfFilters(StringBuilder sql, List<Object> parameters, String keyword, String kategori, boolean hasIsbn) {
         if (keyword != null) {
             String pattern = "%" + keyword + "%";
-            sql.append(" AND (judul LIKE ? OR penulis LIKE ? OR penerbit LIKE ? OR kategori LIKE ? OR kode_buku LIKE ?)");
+            sql.append(" AND (judul LIKE ? OR penulis LIKE ? OR penerbit LIKE ? OR kategori LIKE ? OR kode_buku LIKE ?");
+            if (hasIsbn) {
+                sql.append(" OR isbn LIKE ?");
+            }
+            sql.append(")");
             parameters.add(pattern);
             parameters.add(pattern);
             parameters.add(pattern);
             parameters.add(pattern);
             parameters.add(pattern);
+            if (hasIsbn) {
+                parameters.add(pattern);
+            }
         }
 
         if (kategori != null) {
@@ -249,6 +267,7 @@ public class BukuDao {
     private Buku mapBuku(ResultSet resultSet) throws SQLException {
         int idBuku = resultSet.getInt("id_buku");
         String kodeBuku = resultSet.getString("kode_buku");
+        String isbn = resultSet.getString("isbn");
         String judul = resultSet.getString("judul");
         String penulis = resultSet.getString("penulis");
         String penerbit = resultSet.getString("penerbit");
@@ -259,6 +278,35 @@ public class BukuDao {
         Integer createdBy = resultSet.getObject("created_by") != null ? resultSet.getInt("created_by") : null;
         String createdAt = resultSet.getString("created_at");
 
-        return new Buku(idBuku, kodeBuku, judul, penulis, penerbit, kategori, tahunTerbit, stokTersedia, stokTotal, createdBy, createdAt);
+        return new Buku(idBuku, kodeBuku, isbn, judul, penulis, penerbit, kategori, tahunTerbit, stokTersedia, stokTotal, createdBy, createdAt);
+    }
+
+    private String selectBookColumns() throws SQLException {
+        return selectBookColumns(hasIsbnColumn());
+    }
+
+    private String selectBookColumns(boolean hasIsbn) {
+        String isbnExpression = hasIsbn ? "isbn" : "NULL AS isbn";
+        return "id_buku, kode_buku, " + isbnExpression + ", judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by, created_at";
+    }
+
+    private void ensureIsbnColumn() throws SQLException {
+        if (hasIsbnColumn()) {
+            return;
+        }
+        String sql = "ALTER TABLE buku ADD COLUMN isbn VARCHAR(20) NULL AFTER kode_buku";
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.executeUpdate();
+        }
+    }
+
+    private boolean hasIsbnColumn() throws SQLException {
+        String sql = "SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'buku' AND column_name = 'isbn' LIMIT 1";
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            return resultSet.next();
+        }
     }
 }

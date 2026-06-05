@@ -2,6 +2,7 @@ package com.mycompany.perpustakaan.dao;
 
 import com.mycompany.perpustakaan.api.InventoryReportRow;
 import com.mycompany.perpustakaan.api.LoanReportRow;
+import com.mycompany.perpustakaan.api.PopularBookReportRow;
 import com.mycompany.perpustakaan.config.Database;
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -45,7 +46,8 @@ public class ReportDao {
     }
 
     public List<InventoryReportRow> getInventoryReport() throws SQLException {
-        String sql = "SELECT id_buku, kode_buku, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total FROM buku ORDER BY judul ASC, id_buku ASC";
+        boolean hasIsbn = hasIsbnColumn();
+        String sql = "SELECT id_buku, kode_buku, " + isbnExpression(hasIsbn) + ", judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total FROM buku ORDER BY judul ASC, id_buku ASC";
         List<InventoryReportRow> rows = new ArrayList<>();
 
         try (Connection connection = Database.getConnection();
@@ -54,6 +56,31 @@ public class ReportDao {
 
             while (resultSet.next()) {
                 rows.add(mapInventoryRow(resultSet));
+            }
+        }
+        return rows;
+    }
+
+    public List<PopularBookReportRow> getPopularBookReport(int limit) throws SQLException {
+        boolean hasIsbn = hasIsbnColumn();
+        String sql = "SELECT b.id_buku, b.kode_buku, " + isbnExpression("b", hasIsbn)
+                + ", b.judul, b.penulis, b.kategori, COUNT(p.id_peminjaman) AS total_dipinjam, "
+                + "b.stok_tersedia, b.stok_total "
+                + "FROM buku b "
+                + "LEFT JOIN peminjaman p ON p.id_buku = b.id_buku "
+                + "GROUP BY b.id_buku, b.kode_buku, " + groupByIsbn("b", hasIsbn)
+                + "b.judul, b.penulis, b.kategori, b.stok_tersedia, b.stok_total "
+                + "ORDER BY total_dipinjam DESC, b.judul ASC, b.id_buku ASC LIMIT ?";
+        List<PopularBookReportRow> rows = new ArrayList<>();
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, Math.max(1, limit));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(mapPopularBookRow(resultSet));
+                }
             }
         }
         return rows;
@@ -110,13 +137,30 @@ public class ReportDao {
         return new InventoryReportRow(
                 resultSet.getInt("id_buku"),
                 resultSet.getString("kode_buku"),
+                resultSet.getString("isbn"),
                 resultSet.getString("judul"),
                 resultSet.getString("penulis"),
                 resultSet.getString("penerbit"),
                 resultSet.getString("kategori"),
                 tahunTerbit,
                 resultSet.getInt("stok_tersedia"),
-                resultSet.getInt("stok_total"));
+                resultSet.getInt("stok_total"),
+                statusKetersediaan(resultSet.getInt("stok_tersedia")));
+    }
+
+    private PopularBookReportRow mapPopularBookRow(ResultSet resultSet) throws SQLException {
+        int stokTersedia = resultSet.getInt("stok_tersedia");
+        return new PopularBookReportRow(
+                resultSet.getInt("id_buku"),
+                resultSet.getString("kode_buku"),
+                resultSet.getString("isbn"),
+                resultSet.getString("judul"),
+                resultSet.getString("penulis"),
+                resultSet.getString("kategori"),
+                resultSet.getInt("total_dipinjam"),
+                stokTersedia,
+                resultSet.getInt("stok_total"),
+                statusKetersediaan(stokTersedia));
     }
 
     private LoanReportRow mapLoanRow(ResultSet resultSet) throws SQLException {
@@ -140,6 +184,36 @@ public class ReportDao {
     private void setParameters(PreparedStatement statement, List<Object> parameters) throws SQLException {
         for (int index = 0; index < parameters.size(); index++) {
             statement.setObject(index + 1, parameters.get(index));
+        }
+    }
+
+    private String statusKetersediaan(int stokTersedia) {
+        return stokTersedia > 0 ? "Tersedia" : "Dipinjam";
+    }
+
+    private String isbnExpression(boolean hasIsbn) {
+        return isbnExpression("", hasIsbn);
+    }
+
+    private String isbnExpression(String tableAlias, boolean hasIsbn) {
+        String prefix = tableAlias == null || tableAlias.isBlank() ? "" : tableAlias + ".";
+        return hasIsbn ? prefix + "isbn" : "NULL AS isbn";
+    }
+
+    private String groupByIsbn(String tableAlias, boolean hasIsbn) {
+        if (!hasIsbn) {
+            return "";
+        }
+        String prefix = tableAlias == null || tableAlias.isBlank() ? "" : tableAlias + ".";
+        return prefix + "isbn, ";
+    }
+
+    private boolean hasIsbnColumn() throws SQLException {
+        String sql = "SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'buku' AND column_name = 'isbn' LIMIT 1";
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            return resultSet.next();
         }
     }
 }

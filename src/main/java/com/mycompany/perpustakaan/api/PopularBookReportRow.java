@@ -1,33 +1,29 @@
-package com.mycompany.perpustakaan.model;
+package com.mycompany.perpustakaan.api;
 
-public class Buku {
+public class PopularBookReportRow {
 
     private final int idBuku;
     private final String kodeBuku;
     private final String isbn;
     private final String judul;
     private final String penulis;
-    private final String penerbit;
     private final String kategori;
-    private final Integer tahunTerbit;
+    private final int totalDipinjam;
     private final int stokTersedia;
     private final int stokTotal;
-    private final Integer createdBy;
-    private final String createdAt;
+    private final String statusKetersediaan;
 
-    public Buku(int idBuku, String kodeBuku, String isbn, String judul, String penulis, String penerbit, String kategori, Integer tahunTerbit, int stokTersedia, int stokTotal, Integer createdBy, String createdAt) {
+    public PopularBookReportRow(int idBuku, String kodeBuku, String isbn, String judul, String penulis, String kategori, int totalDipinjam, int stokTersedia, int stokTotal, String statusKetersediaan) {
         this.idBuku = idBuku;
         this.kodeBuku = kodeBuku;
         this.isbn = isbn;
         this.judul = judul;
         this.penulis = penulis;
-        this.penerbit = penerbit;
         this.kategori = kategori;
-        this.tahunTerbit = tahunTerbit;
+        this.totalDipinjam = totalDipinjam;
         this.stokTersedia = stokTersedia;
         this.stokTotal = stokTotal;
-        this.createdBy = createdBy;
-        this.createdAt = createdAt;
+        this.statusKetersediaan = statusKetersediaan;
     }
 
     public int getIdBuku() {
@@ -42,10 +38,6 @@ public class Buku {
         return isbn;
     }
 
-    public String getStatusKetersediaan() {
-        return stokTersedia > 0 ? "Tersedia" : "Dipinjam";
-    }
-
     public String getJudul() {
         return judul;
     }
@@ -54,16 +46,12 @@ public class Buku {
         return penulis;
     }
 
-    public String getPenerbit() {
-        return penerbit;
-    }
-
     public String getKategori() {
         return kategori;
     }
 
-    public Integer getTahunTerbit() {
-        return tahunTerbit;
+    public int getTotalDipinjam() {
+        return totalDipinjam;
     }
 
     public int getStokTersedia() {
@@ -74,11 +62,7 @@ public class Buku {
         return stokTotal;
     }
 
-    public Integer getCreatedBy() {
-        return createdBy;
-    }
-
-    public String getCreatedAt() {
-        return createdAt;
+    public String getStatusKetersediaan() {
+        return statusKetersediaan;
     }
 }

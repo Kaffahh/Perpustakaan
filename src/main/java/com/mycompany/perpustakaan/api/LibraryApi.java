@@ -253,6 +253,10 @@ public class LibraryApi {
         return adminReportController.getLoanReport(startDate, endDate);
     }
 
+    public List<PopularBookReportRow> getPopularBookReport(int limit) throws SQLException {
+        return adminReportController.getPopularBookReport(limit);
+    }
+
     public ReportExportResponse exportInventoryReport(String format, String outputDirectory) throws SQLException {
         try {
             String filePath = adminReportController.exportInventoryReport(format, outputDirectory).toAbsolutePath().toString();

@@ -3,6 +3,7 @@ package com.mycompany.perpustakaan.api;
 public class BookRequest {
 
     private final String kodeBuku;
+    private final String isbn;
     private final String judul;
     private final String penulis;
     private final String penerbit;
@@ -12,7 +13,12 @@ public class BookRequest {
     private final int stokTotal;
 
     public BookRequest(String kodeBuku, String judul, String penulis, String penerbit, String kategori, Integer tahunTerbit, int stokTersedia, int stokTotal) {
+        this(kodeBuku, null, judul, penulis, penerbit, kategori, tahunTerbit, stokTersedia, stokTotal);
+    }
+
+    public BookRequest(String kodeBuku, String isbn, String judul, String penulis, String penerbit, String kategori, Integer tahunTerbit, int stokTersedia, int stokTotal) {
         this.kodeBuku = kodeBuku;
+        this.isbn = isbn;
         this.judul = judul;
         this.penulis = penulis;
         this.penerbit = penerbit;
@@ -24,6 +30,10 @@ public class BookRequest {
 
     public String getKodeBuku() {
         return kodeBuku;
+    }
+
+    public String getIsbn() {
+        return isbn;
     }
 
     public String getJudul() {

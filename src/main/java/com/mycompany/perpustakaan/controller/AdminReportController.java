@@ -3,6 +3,7 @@ package com.mycompany.perpustakaan.controller;
 import com.mycompany.perpustakaan.api.AdminDashboardSummary;
 import com.mycompany.perpustakaan.api.InventoryReportRow;
 import com.mycompany.perpustakaan.api.LoanReportRow;
+import com.mycompany.perpustakaan.api.PopularBookReportRow;
 import com.mycompany.perpustakaan.dao.ReportDao;
 import com.mycompany.perpustakaan.model.User;
 import com.mycompany.perpustakaan.utils.ReportExporter;
@@ -42,6 +43,11 @@ public class AdminReportController {
         requireAdmin();
         validateDateRange(startDate, endDate);
         return reportDao.getLoanReport(startDate, endDate);
+    }
+
+    public List<PopularBookReportRow> getPopularBookReport(int limit) throws SQLException {
+        requireAdmin();
+        return reportDao.getPopularBookReport(normalizeLimit(limit));
     }
 
     public Path exportInventoryReport(String format, String outputDirectory) throws SQLException, IOException {
@@ -96,5 +102,12 @@ public class AdminReportController {
         if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
             throw new IllegalArgumentException("Tanggal awal tidak boleh lebih besar dari tanggal akhir.");
         }
+    }
+
+    private int normalizeLimit(int limit) {
+        if (limit < 1) {
+            return 10;
+        }
+        return Math.min(limit, 100);
     }
 }

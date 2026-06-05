@@ -6,6 +6,7 @@ public class BookSummary {
 
     private final int idBuku;
     private final String kodeBuku;
+    private final String isbn;
     private final String judul;
     private final String penulis;
     private final String penerbit;
@@ -13,12 +14,18 @@ public class BookSummary {
     private final Integer tahunTerbit;
     private final int stokTersedia;
     private final int stokTotal;
+    private final String statusKetersediaan;
     private final Integer createdBy;
     private final String createdAt;
 
     public BookSummary(int idBuku, String kodeBuku, String judul, String penulis, String penerbit, String kategori, Integer tahunTerbit, int stokTersedia, int stokTotal, Integer createdBy, String createdAt) {
+        this(idBuku, kodeBuku, null, judul, penulis, penerbit, kategori, tahunTerbit, stokTersedia, stokTotal, stokTersedia > 0 ? "Tersedia" : "Dipinjam", createdBy, createdAt);
+    }
+
+    public BookSummary(int idBuku, String kodeBuku, String isbn, String judul, String penulis, String penerbit, String kategori, Integer tahunTerbit, int stokTersedia, int stokTotal, String statusKetersediaan, Integer createdBy, String createdAt) {
         this.idBuku = idBuku;
         this.kodeBuku = kodeBuku;
+        this.isbn = isbn;
         this.judul = judul;
         this.penulis = penulis;
         this.penerbit = penerbit;
@@ -26,6 +33,7 @@ public class BookSummary {
         this.tahunTerbit = tahunTerbit;
         this.stokTersedia = stokTersedia;
         this.stokTotal = stokTotal;
+        this.statusKetersediaan = statusKetersediaan;
         this.createdBy = createdBy;
         this.createdAt = createdAt;
     }
@@ -37,6 +45,7 @@ public class BookSummary {
         return new BookSummary(
                 buku.getIdBuku(),
                 buku.getKodeBuku(),
+                buku.getIsbn(),
                 buku.getJudul(),
                 buku.getPenulis(),
                 buku.getPenerbit(),
@@ -44,6 +53,7 @@ public class BookSummary {
                 buku.getTahunTerbit(),
                 buku.getStokTersedia(),
                 buku.getStokTotal(),
+                buku.getStatusKetersediaan(),
                 buku.getCreatedBy(),
                 buku.getCreatedAt());
     }
@@ -54,6 +64,10 @@ public class BookSummary {
 
     public String getKodeBuku() {
         return kodeBuku;
+    }
+
+    public String getIsbn() {
+        return isbn;
     }
 
     public String getJudul() {
@@ -82,6 +96,10 @@ public class BookSummary {
 
     public int getStokTotal() {
         return stokTotal;
+    }
+
+    public String getStatusKetersediaan() {
+        return statusKetersediaan;
     }
 
     public Integer getCreatedBy() {

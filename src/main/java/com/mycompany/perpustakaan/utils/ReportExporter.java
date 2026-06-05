@@ -61,22 +61,24 @@ public class ReportExporter {
 
             org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Inventory");
             CellStyle headerStyle = createHeaderStyle(workbook);
-            writeRow(sheet.createRow(0), headerStyle, "ID", "Kode", "Judul", "Penulis", "Penerbit", "Kategori", "Tahun", "Stok Tersedia", "Stok Total");
+            writeRow(sheet.createRow(0), headerStyle, "ID", "Kode", "ISBN", "Judul", "Penulis", "Penerbit", "Kategori", "Tahun", "Stok Tersedia", "Stok Total", "Status");
 
             int rowIndex = 1;
             for (InventoryReportRow row : rows) {
                 writeRow(sheet.createRow(rowIndex++), null,
                         row.getIdBuku(),
                         row.getKodeBuku(),
+                        row.getIsbn(),
                         row.getJudul(),
                         row.getPenulis(),
                         row.getPenerbit(),
                         row.getKategori(),
                         row.getTahunTerbit(),
                         row.getStokTersedia(),
-                        row.getStokTotal());
+                        row.getStokTotal(),
+                        row.getStatusKetersediaan());
             }
-            autoSize(sheet, 9);
+            autoSize(sheet, 11);
             workbook.write(outputStream);
         }
     }
@@ -117,20 +119,22 @@ public class ReportExporter {
             document.open();
             writeTitle(document, "Laporan Inventory Buku");
 
-            PdfPTable table = new PdfPTable(9);
+            PdfPTable table = new PdfPTable(11);
             table.setWidthPercentage(100);
-            writePdfHeader(table, "ID", "Kode", "Judul", "Penulis", "Penerbit", "Kategori", "Tahun", "Tersedia", "Total");
+            writePdfHeader(table, "ID", "Kode", "ISBN", "Judul", "Penulis", "Penerbit", "Kategori", "Tahun", "Tersedia", "Total", "Status");
             for (InventoryReportRow row : rows) {
                 writePdfCells(table,
                         row.getIdBuku(),
                         row.getKodeBuku(),
+                        row.getIsbn(),
                         row.getJudul(),
                         row.getPenulis(),
                         row.getPenerbit(),
                         row.getKategori(),
                         row.getTahunTerbit(),
                         row.getStokTersedia(),
-                        row.getStokTotal());
+                        row.getStokTotal(),
+                        row.getStatusKetersediaan());
             }
             document.add(table);
             document.close();

@@ -90,6 +90,7 @@ public class StaffBookController {
         }
 
         String kodeBuku = requireText(request.getKodeBuku(), "Kode buku wajib diisi.");
+        String isbn = normalizeIsbn(request.getIsbn());
         String judul = requireText(request.getJudul(), "Judul buku wajib diisi.");
         String penulis = requireText(request.getPenulis(), "Penulis buku wajib diisi.");
         String penerbit = normalizeOptionalText(request.getPenerbit());
@@ -97,7 +98,7 @@ public class StaffBookController {
         Integer tahunTerbit = validateYear(request.getTahunTerbit());
         validateStock(request.getStokTersedia(), request.getStokTotal());
 
-        return new BookRequest(kodeBuku, judul, penulis, penerbit, kategori, tahunTerbit, request.getStokTersedia(), request.getStokTotal());
+        return new BookRequest(kodeBuku, isbn, judul, penulis, penerbit, kategori, tahunTerbit, request.getStokTersedia(), request.getStokTotal());
     }
 
     private Integer validateYear(Integer tahunTerbit) {
@@ -138,5 +139,16 @@ public class StaffBookController {
             return null;
         }
         return value.trim();
+    }
+
+    private String normalizeIsbn(String isbn) {
+        if (isbn == null || isbn.isBlank()) {
+            return null;
+        }
+        String normalizedIsbn = isbn.trim().replace("-", "").replace(" ", "");
+        if (!normalizedIsbn.matches("\\d{9}[\\dXx]|\\d{13}")) {
+            throw new IllegalArgumentException("ISBN harus berformat ISBN-10 atau ISBN-13.");
+        }
+        return normalizedIsbn.toUpperCase();
     }
 }
