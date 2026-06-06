@@ -16,7 +16,7 @@ import java.util.List;
 public class PeminjamanDao {
 
     public boolean hasActiveLoanForBook(int idUser, int idBuku) throws SQLException {
-        String sql = "SELECT 1 FROM peminjaman WHERE id_user = ? AND id_buku = ? AND tanggal_kembali IS NULL AND status IN ('dipinjam', 'terlambat') LIMIT 1";
+        String sql = "SELECT 1 FROM peminjaman WHERE id_user = ? AND id_buku = ? AND tanggal_kembali IS NULL AND status IN ('menunggu', 'dipinjam', 'terlambat') LIMIT 1";
 
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -31,7 +31,7 @@ public class PeminjamanDao {
     }
 
     public int countActiveLoansByUser(int idUser) throws SQLException {
-        String sql = "SELECT COUNT(*) AS total FROM peminjaman WHERE id_user = ? AND tanggal_kembali IS NULL AND status IN ('dipinjam', 'terlambat')";
+        String sql = "SELECT COUNT(*) AS total FROM peminjaman WHERE id_user = ? AND tanggal_kembali IS NULL AND status IN ('menunggu', 'dipinjam', 'terlambat')";
 
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -221,7 +221,7 @@ public class PeminjamanDao {
     }
 
     public List<Peminjaman> findPendingLoans() throws SQLException {
-        String sql = "SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori, u.nama AS nama_user, u.username FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku JOIN user u ON u.id_user = p.id_user WHERE p.status = 'menunggu' ORDER BY p.tanggal_pinjam ASC, p.id_peminjaman ASC";
+        String sql = "SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori, u.nama_lengkap AS nama_user, u.username FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku JOIN users u ON u.id_user = p.id_user WHERE p.status = 'menunggu' ORDER BY p.tanggal_pinjam ASC, p.id_peminjaman ASC";
 
         List<Peminjaman> loans = new ArrayList<>();
         try (Connection connection = Database.getConnection();
