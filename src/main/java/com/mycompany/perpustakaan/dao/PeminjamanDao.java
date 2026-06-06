@@ -118,8 +118,150 @@ public class PeminjamanDao {
         }
     }
 
+    public Peminjaman createPendingLoan(int idUser, int idBuku, LocalDate tanggalPinjam, LocalDate tanggalJatuhTempo) throws SQLException {
+        String sql = "INSERT INTO peminjaman (id_user, id_buku, tanggal_pinjam, tanggal_jatuh_tempo, status, denda) VALUES (?, ?, ?, ?, 'menunggu', 0.00)";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            statement.setInt(1, idUser);
+            statement.setInt(2, idBuku);
+            statement.setDate(3, Date.valueOf(tanggalPinjam));
+            statement.setDate(4, Date.valueOf(tanggalJatuhTempo));
+            statement.executeUpdate();
+
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (!generatedKeys.next()) {
+                    throw new SQLException("Gagal mengambil id peminjaman baru.");
+                }
+                return findById(generatedKeys.getInt(1));
+            }
+        }
+    }
+
+    public Peminjaman approveLoan(int idPeminjaman) throws SQLException {
+        String selectLoanSql = "SELECT id_buku, status FROM peminjaman WHERE id_peminjaman = ? FOR UPDATE";
+        String updateStatusSql = "UPDATE peminjaman SET status = 'dipinjam', tanggal_pinjam = ? WHERE id_peminjaman = ? AND status = 'menunggu'";
+        String updateStockSql = "UPDATE buku SET stok_tersedia = stok_tersedia - 1 WHERE id_buku = ? AND stok_tersedia > 0";
+
+        try (Connection connection = Database.getConnection()) {
+            boolean previousAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+
+            try {
+                int idBuku;
+                try (PreparedStatement statement = connection.prepareStatement(selectLoanSql)) {
+                    statement.setInt(1, idPeminjaman);
+                    try (ResultSet resultSet = statement.executeQuery()) {
+                        if (!resultSet.next()) {
+                            throw new SQLException("Data peminjaman tidak ditemukan.");
+                        }
+                        if (!"menunggu".equalsIgnoreCase(resultSet.getString("status"))) {
+                            throw new SQLException("Pinjaman tidak dalam status menunggu persetujuan.");
+                        }
+                        idBuku = resultSet.getInt("id_buku");
+                    }
+                }
+
+                int stock;
+                try (PreparedStatement statement = connection.prepareStatement("SELECT stok_tersedia FROM buku WHERE id_buku = ? FOR UPDATE")) {
+                    statement.setInt(1, idBuku);
+                    try (ResultSet resultSet = statement.executeQuery()) {
+                        if (!resultSet.next()) {
+                            throw new SQLException("Buku tidak ditemukan.");
+                        }
+                        stock = resultSet.getInt("stok_tersedia");
+                    }
+                }
+
+                if (stock <= 0) {
+                    connection.rollback();
+                    throw new SQLException("Stok buku tidak tersedia.");
+                }
+
+                try (PreparedStatement statement = connection.prepareStatement(updateStatusSql)) {
+                    statement.setDate(1, Date.valueOf(LocalDate.now()));
+                    statement.setInt(2, idPeminjaman);
+                    int updated = statement.executeUpdate();
+                    if (updated != 1) {
+                        connection.rollback();
+                        throw new SQLException("Gagal menyetujui peminjaman.");
+                    }
+                }
+
+                try (PreparedStatement statement = connection.prepareStatement(updateStockSql)) {
+                    statement.setInt(1, idBuku);
+                    statement.executeUpdate();
+                }
+
+                connection.commit();
+                return findById(idPeminjaman);
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(previousAutoCommit);
+            }
+        }
+    }
+
+    public Peminjaman rejectLoan(int idPeminjaman) throws SQLException {
+        String sql = "UPDATE peminjaman SET status = 'ditolak' WHERE id_peminjaman = ? AND status = 'menunggu'";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, idPeminjaman);
+            int updated = statement.executeUpdate();
+            if (updated != 1) {
+                throw new SQLException("Gagal menolak peminjaman atau status bukan menunggu.");
+            }
+            return findById(idPeminjaman);
+        }
+    }
+
+    public List<Peminjaman> findPendingLoans() throws SQLException {
+        String sql = "SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori, u.nama AS nama_user, u.username FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku JOIN user u ON u.id_user = p.id_user WHERE p.status = 'menunggu' ORDER BY p.tanggal_pinjam ASC, p.id_peminjaman ASC";
+
+        List<Peminjaman> loans = new ArrayList<>();
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+                loans.add(mapPeminjamanWithUser(resultSet));
+            }
+        }
+        return loans;
+    }
+
+    private Peminjaman mapPeminjamanWithUser(ResultSet resultSet) throws SQLException {
+        Date tanggalKembali = resultSet.getDate("tanggal_kembali");
+        BigDecimal denda = resultSet.getBigDecimal("denda");
+        Integer createdBy = resultSet.getObject("created_by") != null ? resultSet.getInt("created_by") : null;
+
+        Peminjaman p = new Peminjaman(
+                resultSet.getInt("id_peminjaman"),
+                resultSet.getInt("id_user"),
+                resultSet.getInt("id_buku"),
+                resultSet.getDate("tanggal_pinjam").toLocalDate(),
+                resultSet.getDate("tanggal_jatuh_tempo").toLocalDate(),
+                tanggalKembali == null ? null : tanggalKembali.toLocalDate(),
+                resultSet.getString("status"),
+                denda == null ? BigDecimal.ZERO : denda,
+                createdBy,
+                resultSet.getString("kode_buku"),
+                resultSet.getString("judul"),
+                resultSet.getString("penulis"),
+                resultSet.getString("kategori"));
+        // Store user info in a thread-safe way or use a separate DTO
+        p.setNamaUser(resultSet.getString("nama_user"));
+        p.setUsernameUser(resultSet.getString("username"));
+        return p;
+    }
+
     public List<Peminjaman> findActiveLoansByUser(int idUser) throws SQLException {
-        String sql = "SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku WHERE p.id_user = ? AND p.tanggal_kembali IS NULL AND p.status IN ('dipinjam', 'terlambat') ORDER BY p.tanggal_jatuh_tempo ASC, p.id_peminjaman ASC";
+        String sql = "SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku WHERE p.id_user = ? AND p.tanggal_kembali IS NULL AND p.status IN ('dipinjam', 'terlambat', 'menunggu') ORDER BY p.tanggal_pinjam DESC, p.id_peminjaman ASC";
         List<Peminjaman> loans = new ArrayList<>();
 
         try (Connection connection = Database.getConnection();

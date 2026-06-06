@@ -37,11 +37,18 @@ public class LoanController {
             throw new IllegalStateException("Buku ini masih sedang dipinjam oleh user yang sama.");
         }
 
-        LocalDate tanggalPinjam = LocalDate.now();
-        LocalDate tanggalJatuhTempo = tanggalPinjam.plusDays(safeLoanDays);
-        Peminjaman peminjaman = peminjamanDao.createLoan(currentUser.getIdUser(), idBuku, tanggalPinjam, tanggalJatuhTempo, null);
+        // Check if there's already a pending request for this book
+        int pendingCount = peminjamanDao.countActiveLoansByUser(currentUser.getIdUser());
+        if (pendingCount >= MAX_ACTIVE_LOANS) {
+            throw new IllegalStateException("Anda sudah memiliki " + MAX_ACTIVE_LOANS + " peminjaman aktif atau menunggu.");
+        }
+
+        LocalDate tanggalRequest = LocalDate.now();
+        LocalDate tanggalJatuhTempo = tanggalRequest.plusDays(safeLoanDays);
+        // Create loan with 'menunggu' status - admin/staff must approve it
+        Peminjaman peminjaman = peminjamanDao.createPendingLoan(currentUser.getIdUser(), idBuku, tanggalRequest, tanggalJatuhTempo);
         if (peminjaman == null) {
-            throw new IllegalStateException("Stok buku tidak tersedia.");
+            throw new IllegalStateException("Gagal mengajukan peminjaman.");
         }
 
         return peminjaman;

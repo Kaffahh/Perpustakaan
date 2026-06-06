@@ -18,8 +18,10 @@ public class LoanSummary {
     private final String status;
     private final int hariTerlambat;
     private final BigDecimal dendaBerjalan;
+    private final String namaUser;
+    private final String usernameUser;
 
-    public LoanSummary(int idPeminjaman, int idBuku, String kodeBuku, String judulBuku, String penulisBuku, String kategoriBuku, LocalDate tanggalPinjam, LocalDate tanggalJatuhTempo, LocalDate tanggalKembali, String status, int hariTerlambat, BigDecimal dendaBerjalan) {
+    public LoanSummary(int idPeminjaman, int idBuku, String kodeBuku, String judulBuku, String penulisBuku, String kategoriBuku, LocalDate tanggalPinjam, LocalDate tanggalJatuhTempo, LocalDate tanggalKembali, String status, int hariTerlambat, BigDecimal dendaBerjalan, String namaUser, String usernameUser) {
         this.idPeminjaman = idPeminjaman;
         this.idBuku = idBuku;
         this.kodeBuku = kodeBuku;
@@ -32,6 +34,8 @@ public class LoanSummary {
         this.status = status;
         this.hariTerlambat = hariTerlambat;
         this.dendaBerjalan = dendaBerjalan;
+        this.namaUser = namaUser;
+        this.usernameUser = usernameUser;
     }
 
     public static LoanSummary from(Peminjaman peminjaman, int hariTerlambat, BigDecimal dendaBerjalan) {
@@ -56,7 +60,9 @@ public class LoanSummary {
                 peminjaman.getTanggalKembali(),
                 displayStatus,
                 hariTerlambat,
-                dendaBerjalan);
+                dendaBerjalan,
+                peminjaman.getNamaUser(),
+                peminjaman.getUsernameUser());
     }
 
     public int getIdPeminjaman() {
@@ -105,5 +111,13 @@ public class LoanSummary {
 
     public BigDecimal getDendaBerjalan() {
         return dendaBerjalan;
+    }
+
+    public String getNamaUser() {
+        return namaUser;
+    }
+
+    public String getUsernameUser() {
+        return usernameUser;
     }
 }

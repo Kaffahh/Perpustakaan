@@ -81,6 +81,23 @@ public class StaffLoanReturnController {
         return peminjamanDao.processReturn(idPeminjaman, tanggalKembali, status, denda);
     }
 
+    public Peminjaman approveLoan(int idPeminjaman) throws SQLException {
+        requireStaffOrAdmin();
+        validateId(idPeminjaman, "ID peminjaman tidak valid.");
+        return peminjamanDao.approveLoan(idPeminjaman);
+    }
+
+    public Peminjaman rejectLoan(int idPeminjaman) throws SQLException {
+        requireStaffOrAdmin();
+        validateId(idPeminjaman, "ID peminjaman tidak valid.");
+        return peminjamanDao.rejectLoan(idPeminjaman);
+    }
+
+    public List<Peminjaman> getPendingLoans() throws SQLException {
+        requireStaffOrAdmin();
+        return peminjamanDao.findPendingLoans();
+    }
+
     public LoanManagementResult getLoans(String status, int page, int pageSize) throws SQLException {
         requireStaffOrAdmin();
         int safePage = normalizePage(page);

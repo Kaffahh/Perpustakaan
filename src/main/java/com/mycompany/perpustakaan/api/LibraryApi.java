@@ -246,6 +246,29 @@ public class LibraryApi {
                 result.getStatus());
     }
 
+    public List<LoanSummary> getPendingLoanRequests() throws SQLException {
+        List<Peminjaman> loans = staffLoanReturnController.getPendingLoans();
+        return toLoanSummaries(loans);
+    }
+
+    public LoanResponse approveLoanRequest(int idPeminjaman) throws SQLException {
+        try {
+            Peminjaman peminjaman = staffLoanReturnController.approveLoan(idPeminjaman);
+            return LoanResponse.success("Peminjaman berhasil disetujui.", toLoanSummary(peminjaman));
+        } catch (IllegalArgumentException | IllegalStateException | SQLException exception) {
+            return LoanResponse.failure(exception.getMessage());
+        }
+    }
+
+    public LoanResponse rejectLoanRequest(int idPeminjaman) throws SQLException {
+        try {
+            Peminjaman peminjaman = staffLoanReturnController.rejectLoan(idPeminjaman);
+            return LoanResponse.success("Peminjaman berhasil ditolak.", toLoanSummary(peminjaman));
+        } catch (IllegalArgumentException | IllegalStateException | SQLException exception) {
+            return LoanResponse.failure(exception.getMessage());
+        }
+    }
+
     public AdminDashboardSummary getAdminDashboardSummary() throws SQLException {
         return adminReportController.getAdminDashboardSummary();
     }

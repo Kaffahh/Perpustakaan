@@ -18,6 +18,8 @@ public class Peminjaman {
     private final String judulBuku;
     private final String penulisBuku;
     private final String kategoriBuku;
+    private String namaUser;
+    private String usernameUser;
 
     public Peminjaman(int idPeminjaman, int idUser, int idBuku, LocalDate tanggalPinjam, LocalDate tanggalJatuhTempo, LocalDate tanggalKembali, String status, BigDecimal denda, Integer createdBy, String kodeBuku, String judulBuku, String penulisBuku, String kategoriBuku) {
         this.idPeminjaman = idPeminjaman;
@@ -33,6 +35,22 @@ public class Peminjaman {
         this.judulBuku = judulBuku;
         this.penulisBuku = penulisBuku;
         this.kategoriBuku = kategoriBuku;
+    }
+
+    public void setNamaUser(String namaUser) {
+        this.namaUser = namaUser;
+    }
+
+    public void setUsernameUser(String usernameUser) {
+        this.usernameUser = usernameUser;
+    }
+
+    public String getNamaUser() {
+        return namaUser;
+    }
+
+    public String getUsernameUser() {
+        return usernameUser;
     }
 
     public int getIdPeminjaman() {
