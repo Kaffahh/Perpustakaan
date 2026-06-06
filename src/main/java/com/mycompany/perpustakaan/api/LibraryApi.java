@@ -156,6 +156,24 @@ public class LibraryApi {
         }
     }
 
+    public VisitResponse addManualVisit(String namaPengunjung, String jenisPengunjung, String asalInstansi, String keperluan) throws SQLException {
+        try {
+            Kunjungan kunjungan = visitController.addManualVisit(namaPengunjung, jenisPengunjung, asalInstansi, keperluan);
+            return VisitResponse.success("Kunjungan manual berhasil ditambahkan.", VisitSummary.from(kunjungan));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return VisitResponse.failure(exception.getMessage());
+        }
+    }
+
+    public List<VisitSummary> getRecentVisits(int limit) throws SQLException {
+        List<Kunjungan> visits = visitController.getRecentVisits(limit);
+        List<VisitSummary> summaries = new ArrayList<>();
+        for (Kunjungan visit : visits) {
+            summaries.add(VisitSummary.from(visit));
+        }
+        return summaries;
+    }
+
     public VisitResponse finishVisit(int idKunjungan) throws SQLException {
         try {
             Kunjungan kunjungan = visitController.finishVisit(idKunjungan);

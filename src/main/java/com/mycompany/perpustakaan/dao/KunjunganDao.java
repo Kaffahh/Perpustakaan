@@ -7,6 +7,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 public class KunjunganDao {
 
@@ -34,6 +36,29 @@ public class KunjunganDao {
                 return findById(generatedKeys.getInt(1));
             }
         }
+    }
+
+    public Kunjungan createManualVisit(String namaPengunjung, String jenisPengunjung, String asalInstansi, String keperluan) throws SQLException {
+        return createVisit(null, namaPengunjung, jenisPengunjung, asalInstansi, keperluan);
+    }
+
+    public List<Kunjungan> findRecentVisits(int limit) throws SQLException {
+        String sql = "SELECT id_kunjungan, id_user, nama_pengunjung, jenis_pengunjung, asal_instansi, keperluan, status_kunjungan, tanggal_kunjungan "
+                + "FROM kunjungan ORDER BY tanggal_kunjungan DESC, id_kunjungan DESC LIMIT ?";
+
+        List<Kunjungan> visits = new ArrayList<>();
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, limit);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    visits.add(mapKunjungan(resultSet));
+                }
+            }
+        }
+        return visits;
     }
 
     public Kunjungan updateStatus(int idKunjungan, String statusKunjungan) throws SQLException {

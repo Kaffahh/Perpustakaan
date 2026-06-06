@@ -5,6 +5,7 @@ import com.mycompany.perpustakaan.model.Kunjungan;
 import com.mycompany.perpustakaan.model.User;
 import com.mycompany.perpustakaan.utils.SessionManager;
 import java.sql.SQLException;
+import java.util.List;
 
 public class VisitController {
 
@@ -30,6 +31,22 @@ public class VisitController {
         String safeKeperluan = normalizeOptionalText(keperluan);
 
         return kunjunganDao.createVisit(null, safeNama, safeJenis, safeAsal, safeKeperluan);
+    }
+
+    public Kunjungan addManualVisit(String namaPengunjung, String jenisPengunjung, String asalInstansi, String keperluan) throws SQLException {
+        requireStaffOrAdmin();
+        String safeNama = requireText(namaPengunjung, "Nama pengunjung wajib diisi.");
+        String safeJenis = normalizeJenisPengunjung(jenisPengunjung);
+        String safeAsal = normalizeOptionalText(asalInstansi);
+        String safeKeperluan = normalizeOptionalText(keperluan);
+
+        return kunjunganDao.createManualVisit(safeNama, safeJenis, safeAsal, safeKeperluan);
+    }
+
+    public List<Kunjungan> getRecentVisits(int limit) throws SQLException {
+        requireStaffOrAdmin();
+        int safeLimit = limit < 1 ? 50 : Math.min(limit, 200);
+        return kunjunganDao.findRecentVisits(safeLimit);
     }
 
     public Kunjungan finishVisit(int idKunjungan) throws SQLException {
@@ -67,6 +84,14 @@ public class VisitController {
         User currentUser = SessionManager.getCurrentUser();
         if (currentUser == null) {
             throw new IllegalStateException("User harus login sebelum menambah kunjungan terdaftar.");
+        }
+        return currentUser;
+    }
+
+    private User requireStaffOrAdmin() {
+        User currentUser = requireLoggedInUser();
+        if (!currentUser.isStaff() && !currentUser.isAdmin()) {
+            throw new IllegalStateException("Hanya staff atau admin yang boleh mengelola kunjungan manual.");
         }
         return currentUser;
     }
