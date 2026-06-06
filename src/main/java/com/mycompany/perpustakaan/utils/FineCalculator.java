@@ -6,7 +6,7 @@ import java.time.temporal.ChronoUnit;
 
 public class FineCalculator {
 
-    public static final BigDecimal DEFAULT_DAILY_FINE = new BigDecimal("1000.00");
+    public static final BigDecimal DEFAULT_DAILY_FINE = new BigDecimal("5000.00");
 
     private FineCalculator() {
     }

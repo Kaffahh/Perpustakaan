@@ -34,6 +34,10 @@ public class DashboardController {
         return bukuDao.findLatest(limit);
     }
 
+    public List<Buku> getPopularBooks(int limit) throws SQLException {
+        return bukuDao.findPopular(limit);
+    }
+
     public List<Buku> searchBooks(String keyword, int limit, int offset) throws SQLException {
         return bukuDao.search(keyword, limit, offset);
     }

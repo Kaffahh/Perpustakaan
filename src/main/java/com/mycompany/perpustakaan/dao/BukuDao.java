@@ -44,6 +44,29 @@ public class BukuDao {
         return books;
     }
 
+    public List<Buku> findPopular(int limit) throws SQLException {
+        boolean hasIsbn = hasIsbnColumn();
+        String sql = "SELECT " + selectBookColumns("b", hasIsbn)
+                + " FROM buku b "
+                + "LEFT JOIN peminjaman p ON p.id_buku = b.id_buku "
+                + "GROUP BY " + groupByBookColumns("b", hasIsbn)
+                + " ORDER BY COUNT(p.id_peminjaman) DESC, b.created_at DESC, b.id_buku DESC LIMIT ?";
+        List<Buku> books = new ArrayList<>();
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, Math.max(1, limit));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    books.add(mapBuku(resultSet));
+                }
+            }
+        }
+
+        return books;
+    }
+
     public List<Buku> search(String keyword, int limit, int offset) throws SQLException {
         boolean hasIsbn = hasIsbnColumn();
         String isbnFilter = hasIsbn ? " OR isbn LIKE ?" : "";
@@ -288,6 +311,24 @@ public class BukuDao {
     private String selectBookColumns(boolean hasIsbn) {
         String isbnExpression = hasIsbn ? "isbn" : "NULL AS isbn";
         return "id_buku, kode_buku, " + isbnExpression + ", judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by, created_at";
+    }
+
+    private String selectBookColumns(String tableAlias, boolean hasIsbn) {
+        String prefix = tableAlias == null || tableAlias.isBlank() ? "" : tableAlias + ".";
+        String isbnExpression = hasIsbn ? prefix + "isbn" : "NULL AS isbn";
+        return prefix + "id_buku, " + prefix + "kode_buku, " + isbnExpression + ", "
+                + prefix + "judul, " + prefix + "penulis, " + prefix + "penerbit, "
+                + prefix + "kategori, " + prefix + "tahun_terbit, " + prefix + "stok_tersedia, "
+                + prefix + "stok_total, " + prefix + "created_by, " + prefix + "created_at";
+    }
+
+    private String groupByBookColumns(String tableAlias, boolean hasIsbn) {
+        String prefix = tableAlias == null || tableAlias.isBlank() ? "" : tableAlias + ".";
+        String isbnColumn = hasIsbn ? prefix + "isbn, " : "";
+        return prefix + "id_buku, " + prefix + "kode_buku, " + isbnColumn
+                + prefix + "judul, " + prefix + "penulis, " + prefix + "penerbit, "
+                + prefix + "kategori, " + prefix + "tahun_terbit, " + prefix + "stok_tersedia, "
+                + prefix + "stok_total, " + prefix + "created_by, " + prefix + "created_at";
     }
 
     private void ensureIsbnColumn() throws SQLException {

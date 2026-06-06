@@ -87,6 +87,11 @@ public class LibraryApi {
         return toBookSummaries(books);
     }
 
+    public List<BookSummary> getPopularBooks(int limit) throws SQLException {
+        List<Buku> books = dashboardController.getPopularBooks(limit);
+        return toBookSummaries(books);
+    }
+
     public List<BookSummary> searchBooks(String keyword, int limit, int offset) throws SQLException {
         List<Buku> books = dashboardController.searchBooks(keyword, limit, offset);
         return toBookSummaries(books);
@@ -331,7 +336,7 @@ public class LibraryApi {
     }
 
     public DashboardSummary getDashboardSummary(int latestLimit) throws SQLException {
-        return new DashboardSummary(getCurrentUser(), getTotalBooks(), getLatestBooks(latestLimit));
+        return new DashboardSummary(getCurrentUser(), getTotalBooks(), getPopularBooks(latestLimit), getLatestBooks(latestLimit));
     }
 
     private List<BookSummary> toBookSummaries(List<Buku> books) {
