@@ -61,14 +61,13 @@ public class ReportExporter {
 
             org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Inventory");
             CellStyle headerStyle = createHeaderStyle(workbook);
-            writeRow(sheet.createRow(0), headerStyle, "ID", "Kode", "ISBN", "Judul", "Penulis", "Penerbit", "Kategori", "Tahun", "Stok Tersedia", "Stok Total", "Status");
+            writeRow(sheet.createRow(0), headerStyle, "ID", "Kode", "Judul", "Penulis", "Penerbit", "Kategori", "Tahun", "Stok Tersedia", "Stok Total", "Status");
 
             int rowIndex = 1;
             for (InventoryReportRow row : rows) {
                 writeRow(sheet.createRow(rowIndex++), null,
                         row.getIdBuku(),
                         row.getKodeBuku(),
-                        row.getIsbn(),
                         row.getJudul(),
                         row.getPenulis(),
                         row.getPenerbit(),
@@ -78,7 +77,7 @@ public class ReportExporter {
                         row.getStokTotal(),
                         row.getStatusKetersediaan());
             }
-            autoSize(sheet, 11);
+            autoSize(sheet, 10);
             workbook.write(outputStream);
         }
     }
@@ -119,14 +118,13 @@ public class ReportExporter {
             document.open();
             writeTitle(document, "Laporan Inventory Buku");
 
-            PdfPTable table = new PdfPTable(11);
+            PdfPTable table = new PdfPTable(10);
             table.setWidthPercentage(100);
-            writePdfHeader(table, "ID", "Kode", "ISBN", "Judul", "Penulis", "Penerbit", "Kategori", "Tahun", "Tersedia", "Total", "Status");
+            writePdfHeader(table, "ID", "Kode", "Judul", "Penulis", "Penerbit", "Kategori", "Tahun", "Tersedia", "Total", "Status");
             for (InventoryReportRow row : rows) {
                 writePdfCells(table,
                         row.getIdBuku(),
                         row.getKodeBuku(),
-                        row.getIsbn(),
                         row.getJudul(),
                         row.getPenulis(),
                         row.getPenerbit(),

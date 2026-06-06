@@ -177,14 +177,13 @@ public class BukuDao {
     }
 
     public Buku insert(BookRequest request, int createdBy) throws SQLException {
-        ensureIsbnColumn();
-        String sql = "INSERT INTO buku (kode_buku, isbn, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO buku (kode_buku, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connection = Database.getConnection();
             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             fillBookStatement(statement, request);
-            statement.setInt(10, createdBy);
+            statement.setInt(9, createdBy);
             statement.executeUpdate();
 
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
@@ -197,14 +196,13 @@ public class BukuDao {
     }
 
     public Buku update(int idBuku, BookRequest request) throws SQLException {
-        ensureIsbnColumn();
-        String sql = "UPDATE buku SET kode_buku = ?, isbn = ?, judul = ?, penulis = ?, penerbit = ?, kategori = ?, tahun_terbit = ?, stok_tersedia = ?, stok_total = ? WHERE id_buku = ?";
+        String sql = "UPDATE buku SET kode_buku = ?, judul = ?, penulis = ?, penerbit = ?, kategori = ?, tahun_terbit = ?, stok_tersedia = ?, stok_total = ? WHERE id_buku = ?";
 
         try (Connection connection = Database.getConnection();
             PreparedStatement statement = connection.prepareStatement(sql)) {
 
             fillBookStatement(statement, request);
-            statement.setInt(10, idBuku);
+            statement.setInt(9, idBuku);
             int updatedRows = statement.executeUpdate();
             if (updatedRows == 0) {
                 return null;
@@ -243,18 +241,17 @@ public class BukuDao {
 
     private void fillBookStatement(PreparedStatement statement, BookRequest request) throws SQLException {
         statement.setString(1, request.getKodeBuku());
-        statement.setString(2, request.getIsbn());
-        statement.setString(3, request.getJudul());
-        statement.setString(4, request.getPenulis());
-        statement.setString(5, request.getPenerbit());
-        statement.setString(6, request.getKategori());
+        statement.setString(2, request.getJudul());
+        statement.setString(3, request.getPenulis());
+        statement.setString(4, request.getPenerbit());
+        statement.setString(5, request.getKategori());
         if (request.getTahunTerbit() == null) {
-            statement.setNull(7, java.sql.Types.INTEGER);
+            statement.setNull(6, java.sql.Types.INTEGER);
         } else {
-            statement.setInt(7, request.getTahunTerbit());
+            statement.setInt(6, request.getTahunTerbit());
         }
-        statement.setInt(8, request.getStokTersedia());
-        statement.setInt(9, request.getStokTotal());
+        statement.setInt(7, request.getStokTersedia());
+        statement.setInt(8, request.getStokTotal());
     }
 
     private void appendBookshelfFilters(StringBuilder sql, List<Object> parameters, String keyword, String kategori, boolean hasIsbn) {
@@ -329,17 +326,6 @@ public class BukuDao {
                 + prefix + "judul, " + prefix + "penulis, " + prefix + "penerbit, "
                 + prefix + "kategori, " + prefix + "tahun_terbit, " + prefix + "stok_tersedia, "
                 + prefix + "stok_total, " + prefix + "created_by, " + prefix + "created_at";
-    }
-
-    private void ensureIsbnColumn() throws SQLException {
-        if (hasIsbnColumn()) {
-            return;
-        }
-        String sql = "ALTER TABLE buku ADD COLUMN isbn VARCHAR(20) NULL AFTER kode_buku";
-        try (Connection connection = Database.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.executeUpdate();
-        }
     }
 
     private boolean hasIsbnColumn() throws SQLException {
