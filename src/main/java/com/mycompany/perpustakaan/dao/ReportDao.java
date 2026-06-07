@@ -47,23 +47,58 @@ public class ReportDao {
     }
 
     public List<InventoryReportRow> getInventoryReport() throws SQLException {
+        return getInventoryReport(null, null, 5000, 0);
+    }
+
+    public List<InventoryReportRow> getInventoryReport(String keyword, String kategori, int limit, int offset) throws SQLException {
         boolean hasIsbn = hasIsbnColumn();
-        String sql = "SELECT id_buku, kode_buku, " + isbnExpression(hasIsbn) + ", judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total FROM buku ORDER BY judul ASC, id_buku ASC";
+        StringBuilder sql = new StringBuilder("SELECT id_buku, kode_buku, " + isbnExpression(hasIsbn) + ", judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total FROM buku WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+        appendInventoryFilters(sql, params, keyword, kategori, hasIsbn);
+        sql.append(" ORDER BY judul ASC, id_buku ASC LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
         List<InventoryReportRow> rows = new ArrayList<>();
 
         try (Connection connection = Database.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql);
-             ResultSet resultSet = statement.executeQuery()) {
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
 
-            while (resultSet.next()) {
-                rows.add(mapInventoryRow(resultSet));
+            setParameters(statement, params);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(mapInventoryRow(resultSet));
+                }
             }
         }
         return rows;
     }
 
-    public List<PopularBookReportRow> getPopularBookReport(int limit) throws SQLException {
+    public int countInventoryReport(String keyword, String kategori) throws SQLException {
         boolean hasIsbn = hasIsbnColumn();
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM buku WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+        appendInventoryFilters(sql, params, keyword, kategori, hasIsbn);
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+            setParameters(statement, params);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("total");
+                }
+            }
+        }
+        return 0;
+    }
+
+    public List<PopularBookReportRow> getPopularBookReport(int limit) throws SQLException {
+        return getPopularBookReport(1, limit);
+    }
+
+    public List<PopularBookReportRow> getPopularBookReport(int page, int pageSize) throws SQLException {
+        boolean hasIsbn = hasIsbnColumn();
+        int safePage = Math.max(1, page);
+        int safePageSize = Math.max(1, pageSize);
+        int offset = (safePage - 1) * safePageSize;
         String sql = "SELECT b.id_buku, b.kode_buku, " + isbnExpression("b", hasIsbn)
                 + ", b.judul, b.penulis, b.kategori, COUNT(p.id_peminjaman) AS total_dipinjam, "
                 + "b.stok_tersedia, b.stok_total "
@@ -71,13 +106,14 @@ public class ReportDao {
                 + "LEFT JOIN peminjaman p ON p.id_buku = b.id_buku "
                 + "GROUP BY b.id_buku, b.kode_buku, " + groupByIsbn("b", hasIsbn)
                 + "b.judul, b.penulis, b.kategori, b.stok_tersedia, b.stok_total "
-                + "ORDER BY total_dipinjam DESC, b.judul ASC, b.id_buku ASC LIMIT ?";
+                + "ORDER BY total_dipinjam DESC, b.judul ASC, b.id_buku ASC LIMIT ? OFFSET ?";
         List<PopularBookReportRow> rows = new ArrayList<>();
 
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
-            statement.setInt(1, Math.max(1, limit));
+            statement.setInt(1, safePageSize);
+            statement.setInt(2, offset);
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     rows.add(mapPopularBookRow(resultSet));
@@ -85,6 +121,10 @@ public class ReportDao {
             }
         }
         return rows;
+    }
+
+    public int countPopularBookReport() throws SQLException {
+        return countBooks();
     }
 
     public List<LoanReportRow> getLoanReport(LocalDate startDate, LocalDate endDate) throws SQLException {
@@ -226,6 +266,27 @@ public class ReportDao {
     private void setParameters(PreparedStatement statement, List<Object> parameters) throws SQLException {
         for (int index = 0; index < parameters.size(); index++) {
             statement.setObject(index + 1, parameters.get(index));
+        }
+    }
+
+    private void appendInventoryFilters(StringBuilder sql, List<Object> params, String keyword, String kategori, boolean hasIsbn) {
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String like = "%" + keyword.trim() + "%";
+            sql.append(" AND (kode_buku LIKE ? OR judul LIKE ? OR penulis LIKE ? OR penerbit LIKE ? OR kategori LIKE ?");
+            params.add(like);
+            params.add(like);
+            params.add(like);
+            params.add(like);
+            params.add(like);
+            if (hasIsbn) {
+                sql.append(" OR isbn LIKE ?");
+                params.add(like);
+            }
+            sql.append(")");
+        }
+        if (kategori != null && !kategori.trim().isEmpty() && !"semua".equalsIgnoreCase(kategori)) {
+            sql.append(" AND kategori = ?");
+            params.add(kategori.trim());
         }
     }
 

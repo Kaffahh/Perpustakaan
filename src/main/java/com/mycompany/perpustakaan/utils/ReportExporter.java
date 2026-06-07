@@ -11,6 +11,7 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.mycompany.perpustakaan.api.InventoryReportRow;
 import com.mycompany.perpustakaan.api.LoanReportRow;
+import com.mycompany.perpustakaan.api.VisitReportRow;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -46,6 +47,16 @@ public class ReportExporter {
             return target;
         }
         exportLoansXlsx(rows, target);
+        return target;
+    }
+
+    public Path exportVisits(List<VisitReportRow> rows, String format, Path outputDirectory) throws IOException {
+        Path target = buildTargetPath(outputDirectory, "laporan-kunjungan", format);
+        if ("pdf".equals(format)) {
+            exportVisitsPdf(rows, target);
+            return target;
+        }
+        exportVisitsXlsx(rows, target);
         return target;
     }
 
@@ -111,6 +122,30 @@ public class ReportExporter {
         }
     }
 
+    private void exportVisitsXlsx(List<VisitReportRow> rows, Path target) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook();
+             FileOutputStream outputStream = new FileOutputStream(target.toFile())) {
+
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Kunjungan");
+            CellStyle headerStyle = createHeaderStyle(workbook);
+            writeRow(sheet.createRow(0), headerStyle, "ID", "Nama", "Jenis", "Asal", "Keperluan", "Status", "Tanggal");
+
+            int rowIndex = 1;
+            for (VisitReportRow row : rows) {
+                writeRow(sheet.createRow(rowIndex++), null,
+                        row.getIdKunjungan(),
+                        row.getNamaPengunjung(),
+                        row.getJenisPengunjung(),
+                        row.getAsalInstansi(),
+                        row.getKeperluan(),
+                        row.getStatusKunjungan(),
+                        row.getTanggalKunjungan());
+            }
+            autoSize(sheet, 7);
+            workbook.write(outputStream);
+        }
+    }
+
     private void exportInventoryPdf(List<InventoryReportRow> rows, Path target) throws IOException {
         try (FileOutputStream outputStream = new FileOutputStream(target.toFile())) {
             Document document = new Document(PageSize.A4.rotate());
@@ -161,6 +196,31 @@ public class ReportExporter {
                         formatDate(row.getTanggalKembali()),
                         row.getStatus(),
                         row.getDenda());
+            }
+            document.add(table);
+            document.close();
+        }
+    }
+
+    private void exportVisitsPdf(List<VisitReportRow> rows, Path target) throws IOException {
+        try (FileOutputStream outputStream = new FileOutputStream(target.toFile())) {
+            Document document = new Document(PageSize.A4.rotate());
+            PdfWriter.getInstance(document, outputStream);
+            document.open();
+            writeTitle(document, "Laporan Kunjungan");
+
+            PdfPTable table = new PdfPTable(7);
+            table.setWidthPercentage(100);
+            writePdfHeader(table, "ID", "Nama", "Jenis", "Asal", "Keperluan", "Status", "Tanggal");
+            for (VisitReportRow row : rows) {
+                writePdfCells(table,
+                        row.getIdKunjungan(),
+                        row.getNamaPengunjung(),
+                        row.getJenisPengunjung(),
+                        row.getAsalInstansi(),
+                        row.getKeperluan(),
+                        row.getStatusKunjungan(),
+                        row.getTanggalKunjungan());
             }
             document.add(table);
             document.close();

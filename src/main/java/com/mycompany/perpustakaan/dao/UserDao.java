@@ -111,6 +111,35 @@ public class UserDao {
         }
     }
 
+    public User updateProfile(int idUser, String nama, String email) throws SQLException {
+        String sql = "UPDATE users SET nama_lengkap = ?, email = ? WHERE id_user = ?";
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, nama);
+            statement.setString(2, email);
+            statement.setInt(3, idUser);
+            if (statement.executeUpdate() == 0) {
+                return null;
+            }
+            return findById(idUser);
+        }
+    }
+
+    public User updatePassword(int idUser, String hashedPassword) throws SQLException {
+        String sql = "UPDATE users SET password = ? WHERE id_user = ?";
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, hashedPassword);
+            statement.setInt(2, idUser);
+            if (statement.executeUpdate() == 0) {
+                return null;
+            }
+            return findById(idUser);
+        }
+    }
+
     public boolean deleteMemberById(int idUser) throws SQLException {
         String sql = "DELETE FROM users WHERE id_user = ? AND role = 'anggota'";
 

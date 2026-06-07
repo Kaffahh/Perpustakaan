@@ -13,6 +13,8 @@ import java.util.List;
 
 public class BukuDao {
 
+    private final CategoryDao categoryDao = new CategoryDao();
+
     public int countAll() throws SQLException {
         String sql = "SELECT COUNT(*) AS total FROM buku";
         try (Connection connection = Database.getConnection();
@@ -177,13 +179,14 @@ public class BukuDao {
     }
 
     public Buku insert(BookRequest request, int createdBy) throws SQLException {
-        String sql = "INSERT INTO buku (kode_buku, judul, penulis, penerbit, kategori, tahun_terbit, stok_tersedia, stok_total, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        categoryDao.ensureCategorySchema();
+        String sql = "INSERT INTO buku (kode_buku, judul, penulis, penerbit, kategori, category_id, tahun_terbit, stok_tersedia, stok_total, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connection = Database.getConnection();
-            PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-            fillBookStatement(statement, request);
-            statement.setInt(9, createdBy);
+            fillBookStatement(connection, statement, request);
+            statement.setInt(10, createdBy);
             statement.executeUpdate();
 
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
@@ -196,13 +199,14 @@ public class BukuDao {
     }
 
     public Buku update(int idBuku, BookRequest request) throws SQLException {
-        String sql = "UPDATE buku SET kode_buku = ?, judul = ?, penulis = ?, penerbit = ?, kategori = ?, tahun_terbit = ?, stok_tersedia = ?, stok_total = ? WHERE id_buku = ?";
+        categoryDao.ensureCategorySchema();
+        String sql = "UPDATE buku SET kode_buku = ?, judul = ?, penulis = ?, penerbit = ?, kategori = ?, category_id = ?, tahun_terbit = ?, stok_tersedia = ?, stok_total = ? WHERE id_buku = ?";
 
         try (Connection connection = Database.getConnection();
             PreparedStatement statement = connection.prepareStatement(sql)) {
 
-            fillBookStatement(statement, request);
-            statement.setInt(9, idBuku);
+            fillBookStatement(connection, statement, request);
+            statement.setInt(10, idBuku);
             int updatedRows = statement.executeUpdate();
             if (updatedRows == 0) {
                 return null;
@@ -239,19 +243,24 @@ public class BukuDao {
         }
     }
 
-    private void fillBookStatement(PreparedStatement statement, BookRequest request) throws SQLException {
+    private void fillBookStatement(Connection connection, PreparedStatement statement, BookRequest request) throws SQLException {
         statement.setString(1, request.getKodeBuku());
         statement.setString(2, request.getJudul());
         statement.setString(3, request.getPenulis());
         statement.setString(4, request.getPenerbit());
         statement.setString(5, request.getKategori());
-        if (request.getTahunTerbit() == null) {
+        if (request.getKategori() == null || request.getKategori().trim().isEmpty()) {
             statement.setNull(6, java.sql.Types.INTEGER);
         } else {
-            statement.setInt(6, request.getTahunTerbit());
+            statement.setInt(6, categoryDao.getOrCreateCategoryId(connection, request.getKategori()));
         }
-        statement.setInt(7, request.getStokTersedia());
-        statement.setInt(8, request.getStokTotal());
+        if (request.getTahunTerbit() == null) {
+            statement.setNull(7, java.sql.Types.INTEGER);
+        } else {
+            statement.setInt(7, request.getTahunTerbit());
+        }
+        statement.setInt(8, request.getStokTersedia());
+        statement.setInt(9, request.getStokTotal());
     }
 
     private void appendBookshelfFilters(StringBuilder sql, List<Object> parameters, String keyword, String kategori, boolean hasIsbn) {

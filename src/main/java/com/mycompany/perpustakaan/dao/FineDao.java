@@ -70,20 +70,31 @@ public class FineDao {
     }
 
     public void markFineStatus(int idPeminjaman, String statusPembayaran) throws SQLException {
+        markFineStatus(idPeminjaman, statusPembayaran, null, null);
+    }
+
+    public void markFineStatus(int idPeminjaman, String statusPembayaran, Integer actorUserId, String note) throws SQLException {
         ensureFinePaymentTable();
         String status = normalizePaymentStatus(statusPembayaran);
-        String sql = "INSERT INTO fine_payments (id_peminjaman, status_pembayaran, paid_at) "
+        String sql = "INSERT INTO fine_payments (id_peminjaman, status_pembayaran, paid_at, updated_by, note) "
                 + "VALUES (?, ?, CASE WHEN ? = 'paid' THEN NOW() ELSE NULL END) "
                 + "ON DUPLICATE KEY UPDATE status_pembayaran = VALUES(status_pembayaran), "
-                + "paid_at = VALUES(paid_at), updated_at = CURRENT_TIMESTAMP";
+                + "paid_at = VALUES(paid_at), updated_by = VALUES(updated_by), note = VALUES(note), updated_at = CURRENT_TIMESTAMP";
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setInt(1, idPeminjaman);
             statement.setString(2, status);
             statement.setString(3, status);
+            if (actorUserId == null) {
+                statement.setNull(4, java.sql.Types.INTEGER);
+            } else {
+                statement.setInt(4, actorUserId);
+            }
+            statement.setString(5, note);
             statement.executeUpdate();
         }
+        insertFinePaymentLog(idPeminjaman, status, actorUserId, note);
     }
 
     public BigDecimal sumUnpaidFines() throws SQLException {
@@ -107,12 +118,56 @@ public class FineDao {
                 + "id_peminjaman INT NOT NULL PRIMARY KEY, "
                 + "status_pembayaran ENUM('unpaid','paid','waived') NOT NULL DEFAULT 'unpaid', "
                 + "paid_at DATETIME NULL, "
+                + "updated_by INT NULL, "
+                + "note VARCHAR(255) NULL, "
                 + "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
                 + "CONSTRAINT fk_fine_payments_peminjaman FOREIGN KEY (id_peminjaman) "
                 + "REFERENCES peminjaman(id_peminjaman) ON DELETE CASCADE)";
         try (Connection connection = Database.getConnection();
              Statement statement = connection.createStatement()) {
             statement.executeUpdate(sql);
+            ensureColumn(connection, "fine_payments", "updated_by", "ALTER TABLE fine_payments ADD COLUMN updated_by INT NULL AFTER paid_at");
+            ensureColumn(connection, "fine_payments", "note", "ALTER TABLE fine_payments ADD COLUMN note VARCHAR(255) NULL AFTER updated_by");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS fine_payment_logs ("
+                    + "id_log INT AUTO_INCREMENT PRIMARY KEY, "
+                    + "id_peminjaman INT NOT NULL, "
+                    + "status_pembayaran ENUM('unpaid','paid','waived') NOT NULL, "
+                    + "actor_user_id INT NULL, "
+                    + "note VARCHAR(255) NULL, "
+                    + "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                    + "INDEX idx_fine_payment_logs_peminjaman (id_peminjaman))");
+        }
+    }
+
+    private void insertFinePaymentLog(int idPeminjaman, String status, Integer actorUserId, String note) throws SQLException {
+        String sql = "INSERT INTO fine_payment_logs (id_peminjaman, status_pembayaran, actor_user_id, note) VALUES (?, ?, ?, ?)";
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, idPeminjaman);
+            statement.setString(2, status);
+            if (actorUserId == null) {
+                statement.setNull(3, java.sql.Types.INTEGER);
+            } else {
+                statement.setInt(3, actorUserId);
+            }
+            statement.setString(4, note);
+            statement.executeUpdate();
+        }
+    }
+
+    private void ensureColumn(Connection connection, String tableName, String columnName, String alterSql) throws SQLException {
+        String sql = "SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? LIMIT 1";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, tableName);
+            statement.setString(2, columnName);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return;
+                }
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(alterSql);
         }
     }
 

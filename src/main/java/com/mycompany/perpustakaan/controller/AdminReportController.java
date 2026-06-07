@@ -40,6 +40,18 @@ public class AdminReportController {
         return reportDao.getInventoryReport();
     }
 
+    public List<InventoryReportRow> getInventoryReport(String keyword, String kategori, int page, int pageSize) throws SQLException {
+        requireAdmin();
+        int safePage = page < 1 ? 1 : page;
+        int safePageSize = pageSize < 1 ? 50 : Math.min(pageSize, 200);
+        return reportDao.getInventoryReport(normalizeOptionalText(keyword), normalizeOptionalText(kategori), safePageSize, (safePage - 1) * safePageSize);
+    }
+
+    public int countInventoryReport(String keyword, String kategori) throws SQLException {
+        requireAdmin();
+        return reportDao.countInventoryReport(normalizeOptionalText(keyword), normalizeOptionalText(kategori));
+    }
+
     public List<LoanReportRow> getLoanReport(LocalDate startDate, LocalDate endDate) throws SQLException {
         requireAdmin();
         validateDateRange(startDate, endDate);
@@ -49,6 +61,18 @@ public class AdminReportController {
     public List<PopularBookReportRow> getPopularBookReport(int limit) throws SQLException {
         requireAdmin();
         return reportDao.getPopularBookReport(normalizeLimit(limit));
+    }
+
+    public List<PopularBookReportRow> getPopularBookReport(int page, int pageSize) throws SQLException {
+        requireAdmin();
+        int safePage = page < 1 ? 1 : page;
+        int safePageSize = pageSize < 1 ? 25 : Math.min(pageSize, 100);
+        return reportDao.getPopularBookReport(safePage, safePageSize);
+    }
+
+    public int countPopularBookReport() throws SQLException {
+        requireAdmin();
+        return reportDao.countPopularBookReport();
     }
 
     public List<VisitReportRow> getVisitReport(String keyword, String status) throws SQLException {
@@ -69,6 +93,13 @@ public class AdminReportController {
         String safeFormat = normalizeFormat(format);
         Path safeOutputDirectory = normalizeOutputDirectory(outputDirectory);
         return reportExporter.exportLoans(reportDao.getLoanReport(startDate, endDate), safeFormat, safeOutputDirectory);
+    }
+
+    public Path exportVisitReport(String format, String outputDirectory, String keyword, String status) throws SQLException, IOException {
+        requireAdmin();
+        String safeFormat = normalizeFormat(format);
+        Path safeOutputDirectory = normalizeOutputDirectory(outputDirectory);
+        return reportExporter.exportVisits(reportDao.getVisitReport(normalizeOptionalText(keyword), normalizeOptionalText(status)), safeFormat, safeOutputDirectory);
     }
 
     public String normalizeFormat(String format) {
