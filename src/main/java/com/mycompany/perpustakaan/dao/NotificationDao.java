@@ -33,11 +33,13 @@ public class NotificationDao {
             setParameters(statement, params);
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
+                    boolean read = resultSet.getInt("is_read") == 1;
                     notifications.add(new NotificationSummary(
                             resultSet.getString("tipe"),
                             resultSet.getString("judul"),
                             resultSet.getString("pesan"),
-                            resultSet.getString("created_at")));
+                            resultSet.getString("created_at"),
+                            read));
                 }
             }
         }
