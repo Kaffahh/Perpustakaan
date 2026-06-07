@@ -1,7 +1,9 @@
 package com.mycompany.perpustakaan.controller;
 
 import com.mycompany.perpustakaan.api.MemberRequest;
+import com.mycompany.perpustakaan.api.PersistentSession;
 import com.mycompany.perpustakaan.dao.UserDao;
+import com.mycompany.perpustakaan.dao.UserSessionDao;
 import com.mycompany.perpustakaan.model.User;
 import com.mycompany.perpustakaan.utils.PasswordHasher;
 import com.mycompany.perpustakaan.utils.SessionManager;
@@ -10,9 +12,11 @@ import java.sql.SQLException;
 public class AuthController {
 
     private final UserDao userDao;
+    private final UserSessionDao userSessionDao;
 
     public AuthController() {
         this.userDao = new UserDao();
+        this.userSessionDao = new UserSessionDao();
     }
 
     public User login(String username, String password) throws SQLException {
@@ -37,6 +41,23 @@ public class AuthController {
         return user;
     }
 
+    public PersistentSession loginPersistent(String username, String password) throws SQLException {
+        User user = login(username, password);
+        if (user == null) {
+            return null;
+        }
+        userSessionDao.cleanupExpiredSessions();
+        return userSessionDao.createSession(user);
+    }
+
+    public User restoreSession(String token) throws SQLException {
+        User user = userSessionDao.restoreSession(token);
+        if (user != null) {
+            SessionManager.setCurrentUser(user);
+        }
+        return user;
+    }
+
     public User register(MemberRequest request) throws SQLException {
         MemberRequest safeRequest = validateRegisterRequest(request);
         if (userDao.findByUsername(safeRequest.getUsername()) != null) {
@@ -49,6 +70,20 @@ public class AuthController {
 
     public void logout() {
         SessionManager.logout();
+    }
+
+    public void logout(String token) throws SQLException {
+        if (token != null && !token.isBlank()) {
+            userSessionDao.revokeSession(token);
+        }
+        SessionManager.logout();
+    }
+
+    public void revokeAllCurrentUserSessions() throws SQLException {
+        User currentUser = SessionManager.getCurrentUser();
+        if (currentUser != null) {
+            userSessionDao.revokeAllUserSessions(currentUser.getIdUser());
+        }
     }
 
     public boolean isLoggedIn() {

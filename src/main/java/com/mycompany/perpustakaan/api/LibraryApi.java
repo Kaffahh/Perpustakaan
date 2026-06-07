@@ -67,6 +67,26 @@ public class LibraryApi {
         return AuthResponse.success("Login berhasil.", UserSummary.from(user));
     }
 
+    public SessionLoginResponse loginPersistent(String username, String password) throws SQLException {
+        PersistentSession session = authController.loginPersistent(username, password);
+        if (session == null) {
+            return SessionLoginResponse.failure("Username atau password salah.");
+        }
+        return SessionLoginResponse.success(
+                "Login berhasil.",
+                UserSummary.from(session.getUser()),
+                session.getToken(),
+                session.getExpiresAt());
+    }
+
+    public AuthResponse restoreSession(String sessionToken) throws SQLException {
+        User user = authController.restoreSession(sessionToken);
+        if (user == null) {
+            return AuthResponse.failure("Session tidak valid atau sudah kedaluwarsa.");
+        }
+        return AuthResponse.success("Session berhasil dipulihkan.", UserSummary.from(user));
+    }
+
     public MemberResponse register(MemberRequest request) throws SQLException {
         try {
             User member = authController.register(request);
@@ -78,6 +98,14 @@ public class LibraryApi {
 
     public void logout() {
         authController.logout();
+    }
+
+    public void logout(String sessionToken) throws SQLException {
+        authController.logout(sessionToken);
+    }
+
+    public void revokeAllCurrentUserSessions() throws SQLException {
+        authController.revokeAllCurrentUserSessions();
     }
 
     public boolean isLoggedIn() {
