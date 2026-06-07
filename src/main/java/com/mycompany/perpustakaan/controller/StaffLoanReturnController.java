@@ -98,6 +98,18 @@ public class StaffLoanReturnController {
         return peminjamanDao.findPendingLoans();
     }
 
+    public LoanManagementResult getPendingLoans(String keyword, int page, int pageSize) throws SQLException {
+        requireStaffOrAdmin();
+        int safePage = normalizePage(page);
+        int safePageSize = normalizePageSize(pageSize);
+        String safeKeyword = normalizeKeyword(keyword);
+        int offset = (safePage - 1) * safePageSize;
+
+        List<Peminjaman> loans = peminjamanDao.findPendingLoans(safeKeyword, safePageSize, offset);
+        int totalItems = peminjamanDao.countPendingLoans(safeKeyword);
+        return new LoanManagementResult(loans, totalItems, safePage, safePageSize, "menunggu");
+    }
+
     public LoanManagementResult getLoans(String status, int page, int pageSize) throws SQLException {
         return getLoans(status, null, page, pageSize);
     }

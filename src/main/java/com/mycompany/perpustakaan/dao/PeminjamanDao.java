@@ -221,18 +221,48 @@ public class PeminjamanDao {
     }
 
     public List<Peminjaman> findPendingLoans() throws SQLException {
-        String sql = "SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori, u.nama_lengkap AS nama_user, u.username FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku JOIN users u ON u.id_user = p.id_user WHERE p.status = 'menunggu' ORDER BY p.tanggal_pinjam ASC, p.id_peminjaman ASC";
+        return findPendingLoans(null, 5000, 0);
+    }
+
+    public List<Peminjaman> findPendingLoans(String keyword, int limit, int offset) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori, u.nama_lengkap AS nama_user, u.username FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku JOIN users u ON u.id_user = p.id_user WHERE p.status = 'menunggu'");
+        List<Object> parameters = new ArrayList<>();
+
+        appendPendingKeywordFilter(sql, parameters, keyword);
+        sql.append(" ORDER BY p.tanggal_pinjam ASC, p.id_peminjaman ASC LIMIT ? OFFSET ?");
+        parameters.add(Math.max(1, limit));
+        parameters.add(Math.max(0, offset));
 
         List<Peminjaman> loans = new ArrayList<>();
         try (Connection connection = Database.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql);
-             ResultSet resultSet = statement.executeQuery()) {
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
 
-            while (resultSet.next()) {
-                loans.add(mapPeminjamanWithUser(resultSet));
+            setParameters(statement, parameters);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    loans.add(mapPeminjamanWithUser(resultSet));
+                }
             }
         }
         return loans;
+    }
+
+    public int countPendingLoans(String keyword) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku JOIN users u ON u.id_user = p.id_user WHERE p.status = 'menunggu'");
+        List<Object> parameters = new ArrayList<>();
+        appendPendingKeywordFilter(sql, parameters, keyword);
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            setParameters(statement, parameters);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("total");
+                }
+            }
+        }
+        return 0;
     }
 
     private Peminjaman mapPeminjamanWithUser(ResultSet resultSet) throws SQLException {
@@ -443,6 +473,19 @@ public class PeminjamanDao {
         if (keyword != null && !keyword.trim().isEmpty()) {
             String like = "%" + keyword.trim() + "%";
             sql.append(" AND (b.judul LIKE ? OR b.penulis LIKE ? OR b.kode_buku LIKE ? OR u.nama_lengkap LIKE ? OR u.username LIKE ?)");
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+        }
+    }
+
+    private void appendPendingKeywordFilter(StringBuilder sql, List<Object> parameters, String keyword) {
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String like = "%" + keyword.trim() + "%";
+            sql.append(" AND (b.judul LIKE ? OR b.penulis LIKE ? OR b.kode_buku LIKE ? OR b.kategori LIKE ? OR u.nama_lengkap LIKE ? OR u.username LIKE ?)");
+            parameters.add(like);
             parameters.add(like);
             parameters.add(like);
             parameters.add(like);

@@ -340,6 +340,20 @@ public class LibraryApi {
         return toLoanSummaries(loans);
     }
 
+    public LoanManagementPage getPendingLoanRequests(int page, int pageSize) throws SQLException {
+        return getPendingLoanRequests(null, page, pageSize);
+    }
+
+    public LoanManagementPage getPendingLoanRequests(String keyword, int page, int pageSize) throws SQLException {
+        StaffLoanReturnController.LoanManagementResult result = staffLoanReturnController.getPendingLoans(keyword, page, pageSize);
+        return new LoanManagementPage(
+                toLoanSummaries(result.getLoans()),
+                result.getTotalItems(),
+                result.getPage(),
+                result.getPageSize(),
+                result.getStatus());
+    }
+
     public LoanResponse approveLoanRequest(int idPeminjaman) throws SQLException {
         try {
             Peminjaman peminjaman = staffLoanReturnController.approveLoan(idPeminjaman);
@@ -435,6 +449,16 @@ public class LibraryApi {
     public List<CategorySummary> getCategorySummaries() throws SQLException {
         requireStaffOrAdmin("mengakses kategori.");
         return categoryDao.findCategorySummaries();
+    }
+
+    public BookResponse createCategory(String categoryName) throws SQLException {
+        requireAdmin("menambah kategori.");
+        try {
+            CategorySummary category = categoryDao.createCategory(categoryName);
+            return BookResponse.success("Kategori " + category.getNamaKategori() + " berhasil ditambahkan.", null);
+        } catch (IllegalArgumentException | SQLException exception) {
+            return BookResponse.failure(messageOf(exception, "Operasi gagal."));
+        }
     }
 
     public BookResponse renameCategory(String oldName, String newName) throws SQLException {
