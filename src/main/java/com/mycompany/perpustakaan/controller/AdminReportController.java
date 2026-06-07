@@ -80,6 +80,18 @@ public class AdminReportController {
         return reportDao.getVisitReport(normalizeOptionalText(keyword), normalizeOptionalText(status));
     }
 
+    public List<VisitReportRow> getVisitReport(String keyword, String status, int page, int pageSize) throws SQLException {
+        requireAdmin();
+        int safePage = page < 1 ? 1 : page;
+        int safePageSize = pageSize < 1 ? 50 : Math.min(pageSize, 200);
+        return reportDao.getVisitReport(normalizeOptionalText(keyword), normalizeOptionalText(status), safePageSize, (safePage - 1) * safePageSize);
+    }
+
+    public int countVisitReport(String keyword, String status) throws SQLException {
+        requireAdmin();
+        return reportDao.countVisitReport(normalizeOptionalText(keyword), normalizeOptionalText(status));
+    }
+
     public Path exportInventoryReport(String format, String outputDirectory) throws SQLException, IOException {
         requireAdmin();
         String safeFormat = normalizeFormat(format);

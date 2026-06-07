@@ -92,7 +92,7 @@ public class LibraryApi {
             User member = authController.register(request);
             return MemberResponse.success("Register berhasil. Silakan login.", MemberSummary.from(member));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return MemberResponse.failure(exception.getMessage());
+            return MemberResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -155,7 +155,7 @@ public class LibraryApi {
                     "Ada request peminjaman dari " + getCurrentUser().getNama() + ".", null, "staff");
             return LoanResponse.success("Peminjaman berhasil diajukan.", toLoanSummary(peminjaman));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return LoanResponse.failure(exception.getMessage());
+            return LoanResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -183,7 +183,7 @@ public class LibraryApi {
             Kunjungan kunjungan = visitController.addRegisteredUserVisit(jenisPengunjung, asalInstansi, keperluan);
             return VisitResponse.success("Kunjungan user terdaftar berhasil ditambahkan.", VisitSummary.from(kunjungan));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return VisitResponse.failure(exception.getMessage());
+            return VisitResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -192,7 +192,7 @@ public class LibraryApi {
             Kunjungan kunjungan = visitController.addGuestVisit(namaPengunjung, jenisPengunjung, asalInstansi, keperluan);
             return VisitResponse.success("Kunjungan tamu berhasil ditambahkan.", VisitSummary.from(kunjungan));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return VisitResponse.failure(exception.getMessage());
+            return VisitResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -201,7 +201,7 @@ public class LibraryApi {
             Kunjungan kunjungan = visitController.addManualVisit(namaPengunjung, jenisPengunjung, asalInstansi, keperluan);
             return VisitResponse.success("Kunjungan manual berhasil ditambahkan.", VisitSummary.from(kunjungan));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return VisitResponse.failure(exception.getMessage());
+            return VisitResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -223,6 +223,14 @@ public class LibraryApi {
         return summaries;
     }
 
+    public VisitPage getVisitPage(String keyword, String status, int page, int pageSize) throws SQLException {
+        int safePage = normalizePage(page);
+        int safePageSize = normalizePageSize(pageSize, 200);
+        List<VisitSummary> visits = searchVisits(keyword, status, safePage, safePageSize);
+        int totalItems = countVisits(keyword, status);
+        return new VisitPage(visits, totalItems, safePage, safePageSize, normalizeText(keyword), normalizeText(status));
+    }
+
     public int countVisits(String keyword, String status) throws SQLException {
         return visitController.countVisits(keyword, status);
     }
@@ -232,7 +240,7 @@ public class LibraryApi {
             Kunjungan kunjungan = visitController.finishVisit(idKunjungan);
             return VisitResponse.success("Status kunjungan berhasil diubah menjadi selesai.", VisitSummary.from(kunjungan));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return VisitResponse.failure(exception.getMessage());
+            return VisitResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -241,7 +249,7 @@ public class LibraryApi {
             Kunjungan kunjungan = visitController.cancelVisit(idKunjungan);
             return VisitResponse.success("Status kunjungan berhasil diubah menjadi batal.", VisitSummary.from(kunjungan));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return VisitResponse.failure(exception.getMessage());
+            return VisitResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -254,7 +262,7 @@ public class LibraryApi {
             Buku book = staffBookController.addBook(request);
             return BookResponse.success("Buku berhasil ditambahkan.", BookSummary.from(book));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return BookResponse.failure(exception.getMessage());
+            return BookResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -263,7 +271,7 @@ public class LibraryApi {
             Buku book = staffBookController.updateBook(idBuku, request);
             return BookResponse.success("Buku berhasil diperbarui.", BookSummary.from(book));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return BookResponse.failure(exception.getMessage());
+            return BookResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -272,7 +280,7 @@ public class LibraryApi {
             Buku book = staffBookController.updateStock(idBuku, stokTersedia, stokTotal);
             return BookResponse.success("Stok buku berhasil diperbarui.", BookSummary.from(book));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return BookResponse.failure(exception.getMessage());
+            return BookResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -281,7 +289,7 @@ public class LibraryApi {
             staffBookController.deleteBook(idBuku);
             return BookResponse.success("Buku berhasil dihapus.", null);
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return BookResponse.failure(exception.getMessage());
+            return BookResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -294,7 +302,7 @@ public class LibraryApi {
             Peminjaman peminjaman = staffLoanReturnController.createLoanForUser(idUser, idBuku, loanDays);
             return LoanResponse.success("Peminjaman berhasil diproses.", toLoanSummary(peminjaman));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return LoanResponse.failure(exception.getMessage());
+            return LoanResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -303,7 +311,7 @@ public class LibraryApi {
             Peminjaman peminjaman = staffLoanReturnController.processReturn(idPeminjaman);
             return LoanResponse.success("Pengembalian berhasil diproses.", toLoanSummary(peminjaman));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return LoanResponse.failure(exception.getMessage());
+            return LoanResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -339,7 +347,7 @@ public class LibraryApi {
                     "Request peminjaman kamu disetujui.", peminjaman.getIdUser(), null);
             return LoanResponse.success("Peminjaman berhasil disetujui.", toLoanSummary(peminjaman));
         } catch (IllegalArgumentException | IllegalStateException | SQLException exception) {
-            return LoanResponse.failure(exception.getMessage());
+            return LoanResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -350,7 +358,7 @@ public class LibraryApi {
                     "Request peminjaman kamu ditolak.", peminjaman.getIdUser(), null);
             return LoanResponse.success("Peminjaman berhasil ditolak.", toLoanSummary(peminjaman));
         } catch (IllegalArgumentException | IllegalStateException | SQLException exception) {
-            return LoanResponse.failure(exception.getMessage());
+            return LoanResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -370,6 +378,18 @@ public class LibraryApi {
         return adminReportController.countInventoryReport(keyword, kategori);
     }
 
+    public InventoryReportPage getInventoryReportPage(String keyword, String kategori, int page, int pageSize) throws SQLException {
+        int safePage = normalizePage(page);
+        int safePageSize = normalizePageSize(pageSize, 200);
+        return new InventoryReportPage(
+                getInventoryReport(keyword, kategori, safePage, safePageSize),
+                countInventoryReport(keyword, kategori),
+                safePage,
+                safePageSize,
+                normalizeText(keyword),
+                normalizeText(kategori));
+    }
+
     public List<LoanReportRow> getLoanReport(LocalDate startDate, LocalDate endDate) throws SQLException {
         return adminReportController.getLoanReport(startDate, endDate);
     }
@@ -386,8 +406,30 @@ public class LibraryApi {
         return adminReportController.countPopularBookReport();
     }
 
+    public PopularBookReportPage getPopularBookReportPage(int page, int pageSize) throws SQLException {
+        int safePage = normalizePage(page);
+        int safePageSize = normalizePageSize(pageSize, 100);
+        return new PopularBookReportPage(
+                getPopularBookReport(safePage, safePageSize),
+                countPopularBookReport(),
+                safePage,
+                safePageSize);
+    }
+
     public List<VisitReportRow> getVisitReport(String keyword, String status) throws SQLException {
         return adminReportController.getVisitReport(keyword, status);
+    }
+
+    public VisitReportPage getVisitReportPage(String keyword, String status, int page, int pageSize) throws SQLException {
+        int safePage = normalizePage(page);
+        int safePageSize = normalizePageSize(pageSize, 200);
+        return new VisitReportPage(
+                adminReportController.getVisitReport(keyword, status, safePage, safePageSize),
+                adminReportController.countVisitReport(keyword, status),
+                safePage,
+                safePageSize,
+                normalizeText(keyword),
+                normalizeText(status));
     }
 
     public List<CategorySummary> getCategorySummaries() throws SQLException {
@@ -401,7 +443,7 @@ public class LibraryApi {
             int updated = categoryDao.renameCategory(oldName, newName);
             return BookResponse.success("Kategori berhasil diperbarui untuk " + updated + " buku.", null);
         } catch (IllegalArgumentException exception) {
-            return BookResponse.failure(exception.getMessage());
+            return BookResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -411,14 +453,14 @@ public class LibraryApi {
             int updated = categoryDao.clearCategory(categoryName);
             return BookResponse.success("Kategori berhasil dilepas dari " + updated + " buku.", null);
         } catch (IllegalArgumentException exception) {
-            return BookResponse.failure(exception.getMessage());
+            return BookResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
     public List<FineSummary> getFines(String keyword, String status, int page, int pageSize) throws SQLException {
         requireStaffOrAdmin("mengakses denda.");
-        int safePage = page < 1 ? 1 : page;
-        int safePageSize = pageSize < 1 ? 50 : Math.min(pageSize, 100);
+        int safePage = normalizePage(page);
+        int safePageSize = normalizePageSize(pageSize, 100);
         int offset = (safePage - 1) * safePageSize;
         return fineDao.findFines(normalizeText(keyword), normalizeText(status), safePageSize, offset);
     }
@@ -426,6 +468,18 @@ public class LibraryApi {
     public int countFines(String keyword, String status) throws SQLException {
         requireStaffOrAdmin("mengakses denda.");
         return fineDao.countFines(normalizeText(keyword), normalizeText(status));
+    }
+
+    public FinePage getFinePage(String keyword, String status, int page, int pageSize) throws SQLException {
+        int safePage = normalizePage(page);
+        int safePageSize = normalizePageSize(pageSize, 100);
+        return new FinePage(
+                getFines(keyword, status, safePage, safePageSize),
+                countFines(keyword, status),
+                safePage,
+                safePageSize,
+                normalizeText(keyword),
+                normalizeText(status));
     }
 
     public LoanResponse markFinePaid(int idPeminjaman) throws SQLException {
@@ -437,7 +491,7 @@ public class LibraryApi {
                     "Denda peminjaman ID " + idPeminjaman + " sudah ditandai lunas.", null, "staff");
             return LoanResponse.success("Denda berhasil ditandai lunas.", null);
         } catch (IllegalArgumentException exception) {
-            return LoanResponse.failure(exception.getMessage());
+            return LoanResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -450,7 +504,7 @@ public class LibraryApi {
                     "Denda peminjaman ID " + idPeminjaman + " di-waive admin.", null, "staff");
             return LoanResponse.success("Denda berhasil di-waive.", null);
         } catch (IllegalArgumentException exception) {
-            return LoanResponse.failure(exception.getMessage());
+            return LoanResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -501,7 +555,7 @@ public class LibraryApi {
             String filePath = adminReportController.exportInventoryReport(format, outputDirectory).toAbsolutePath().toString();
             return ReportExportResponse.success("Laporan inventory berhasil diexport.", filePath, adminReportController.normalizeFormat(format));
         } catch (IllegalArgumentException | IllegalStateException | IOException exception) {
-            return ReportExportResponse.failure(exception.getMessage());
+            return ReportExportResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -510,7 +564,7 @@ public class LibraryApi {
             String filePath = adminReportController.exportLoanReport(format, outputDirectory, startDate, endDate).toAbsolutePath().toString();
             return ReportExportResponse.success("Laporan peminjaman berhasil diexport.", filePath, adminReportController.normalizeFormat(format));
         } catch (IllegalArgumentException | IllegalStateException | IOException exception) {
-            return ReportExportResponse.failure(exception.getMessage());
+            return ReportExportResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -519,7 +573,7 @@ public class LibraryApi {
             String filePath = adminReportController.exportVisitReport(format, outputDirectory, keyword, status).toAbsolutePath().toString();
             return ReportExportResponse.success("Laporan kunjungan berhasil diexport.", filePath, adminReportController.normalizeFormat(format));
         } catch (IllegalArgumentException | IllegalStateException | IOException exception) {
-            return ReportExportResponse.failure(exception.getMessage());
+            return ReportExportResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -528,7 +582,7 @@ public class LibraryApi {
             User member = memberController.addMember(request);
             return MemberResponse.success("Anggota berhasil ditambahkan.", MemberSummary.from(member));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return MemberResponse.failure(exception.getMessage());
+            return MemberResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -537,7 +591,7 @@ public class LibraryApi {
             User member = memberController.updateMember(idUser, request);
             return MemberResponse.success("Anggota berhasil diperbarui.", MemberSummary.from(member));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return MemberResponse.failure(exception.getMessage());
+            return MemberResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -546,7 +600,7 @@ public class LibraryApi {
             User member = memberController.suspendMember(idUser);
             return MemberResponse.success("Anggota berhasil disuspend.", MemberSummary.from(member));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return MemberResponse.failure(exception.getMessage());
+            return MemberResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -555,7 +609,7 @@ public class LibraryApi {
             User member = memberController.activateMember(idUser);
             return MemberResponse.success("Anggota berhasil diaktifkan.", MemberSummary.from(member));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return MemberResponse.failure(exception.getMessage());
+            return MemberResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -564,7 +618,7 @@ public class LibraryApi {
             memberController.deleteMember(idUser);
             return MemberResponse.success("Anggota berhasil dihapus.", null);
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return MemberResponse.failure(exception.getMessage());
+            return MemberResponse.failure(messageOf(exception, "Operasi gagal."));
         }
     }
 
@@ -655,6 +709,24 @@ public class LibraryApi {
         return value.trim();
     }
 
+    private String messageOf(Exception exception, String fallback) {
+        if (exception == null || exception.getMessage() == null || exception.getMessage().isBlank()) {
+            return fallback;
+        }
+        return exception.getMessage();
+    }
+
+    private int normalizePage(int page) {
+        return page < 1 ? 1 : page;
+    }
+
+    private int normalizePageSize(int pageSize, int maxPageSize) {
+        if (pageSize < 1) {
+            return Math.min(50, maxPageSize);
+        }
+        return Math.min(pageSize, maxPageSize);
+    }
+
     private User requireStaffOrAdmin(String action) {
         User current = authController.getCurrentUser();
         if (current == null) {
@@ -677,3 +749,4 @@ public class LibraryApi {
         return current;
     }
 }
+

@@ -8,7 +8,7 @@ public class MemberResponse {
 
     public MemberResponse(boolean success, String message, MemberSummary member) {
         this.success = success;
-        this.message = message;
+        this.message = ApiResponseMessages.normalize(success, message);
         this.member = member;
     }
 

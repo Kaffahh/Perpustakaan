@@ -8,7 +8,7 @@ public class AuthResponse {
 
     public AuthResponse(boolean success, String message, UserSummary user) {
         this.success = success;
-        this.message = message;
+        this.message = ApiResponseMessages.normalize(success, message);
         this.user = user;
     }
 

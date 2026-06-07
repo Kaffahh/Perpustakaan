@@ -9,7 +9,7 @@ public class ReportExportResponse {
 
     public ReportExportResponse(boolean success, String message, String filePath, String format) {
         this.success = success;
-        this.message = message;
+        this.message = ApiResponseMessages.normalize(success, message);
         this.filePath = filePath;
         this.format = format;
     }

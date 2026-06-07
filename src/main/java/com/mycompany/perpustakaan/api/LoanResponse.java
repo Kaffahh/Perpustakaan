@@ -8,7 +8,7 @@ public class LoanResponse {
 
     public LoanResponse(boolean success, String message, LoanSummary loan) {
         this.success = success;
-        this.message = message;
+        this.message = ApiResponseMessages.normalize(success, message);
         this.loan = loan;
     }
 

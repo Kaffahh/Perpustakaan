@@ -8,7 +8,7 @@ public class VisitResponse {
 
     public VisitResponse(boolean success, String message, VisitSummary visit) {
         this.success = success;
-        this.message = message;
+        this.message = ApiResponseMessages.normalize(success, message);
         this.visit = visit;
     }
 

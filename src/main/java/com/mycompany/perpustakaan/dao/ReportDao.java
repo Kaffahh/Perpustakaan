@@ -162,24 +162,19 @@ public class ReportDao {
     }
 
     public List<VisitReportRow> getVisitReport(String keyword, String status) throws SQLException {
+        return getVisitReport(keyword, status, 5000, 0);
+    }
+
+    public List<VisitReportRow> getVisitReport(String keyword, String status, int limit, int offset) throws SQLException {
         StringBuilder sql = new StringBuilder(
                 "SELECT id_kunjungan, nama_pengunjung, jenis_pengunjung, asal_instansi, keperluan, status_kunjungan, tanggal_kunjungan "
                 + "FROM kunjungan WHERE 1=1");
         List<Object> parameters = new ArrayList<>();
 
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            String like = "%" + keyword.trim() + "%";
-            sql.append(" AND (nama_pengunjung LIKE ? OR jenis_pengunjung LIKE ? OR asal_instansi LIKE ? OR keperluan LIKE ?)");
-            parameters.add(like);
-            parameters.add(like);
-            parameters.add(like);
-            parameters.add(like);
-        }
-        if (status != null && !status.isBlank() && !"semua".equalsIgnoreCase(status)) {
-            sql.append(" AND status_kunjungan = ?");
-            parameters.add(status.trim().toLowerCase());
-        }
-        sql.append(" ORDER BY tanggal_kunjungan DESC, id_kunjungan DESC");
+        appendVisitReportFilters(sql, parameters, keyword, status);
+        sql.append(" ORDER BY tanggal_kunjungan DESC, id_kunjungan DESC LIMIT ? OFFSET ?");
+        parameters.add(limit);
+        parameters.add(offset);
 
         List<VisitReportRow> rows = new ArrayList<>();
         try (Connection connection = Database.getConnection();
@@ -200,6 +195,24 @@ public class ReportDao {
             }
         }
         return rows;
+    }
+
+    public int countVisitReport(String keyword, String status) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM kunjungan WHERE 1=1");
+        List<Object> parameters = new ArrayList<>();
+        appendVisitReportFilters(sql, parameters, keyword, status);
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            setParameters(statement, parameters);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("total");
+                }
+            }
+        }
+        return 0;
     }
 
     private int count(String sql) throws SQLException {
@@ -287,6 +300,21 @@ public class ReportDao {
         if (kategori != null && !kategori.trim().isEmpty() && !"semua".equalsIgnoreCase(kategori)) {
             sql.append(" AND kategori = ?");
             params.add(kategori.trim());
+        }
+    }
+
+    private void appendVisitReportFilters(StringBuilder sql, List<Object> parameters, String keyword, String status) {
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String like = "%" + keyword.trim() + "%";
+            sql.append(" AND (nama_pengunjung LIKE ? OR jenis_pengunjung LIKE ? OR asal_instansi LIKE ? OR keperluan LIKE ?)");
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+        }
+        if (status != null && !status.isBlank() && !"semua".equalsIgnoreCase(status)) {
+            sql.append(" AND status_kunjungan = ?");
+            parameters.add(status.trim().toLowerCase());
         }
     }
 

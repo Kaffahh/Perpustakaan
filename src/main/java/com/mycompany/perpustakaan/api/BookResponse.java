@@ -8,7 +8,7 @@ public class BookResponse {
 
     public BookResponse(boolean success, String message, BookSummary book) {
         this.success = success;
-        this.message = message;
+        this.message = ApiResponseMessages.normalize(success, message);
         this.book = book;
     }
 
