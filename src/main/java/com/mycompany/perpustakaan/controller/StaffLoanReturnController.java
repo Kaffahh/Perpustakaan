@@ -115,6 +115,10 @@ public class StaffLoanReturnController {
     }
 
     public LoanManagementResult getLoans(String status, String keyword, int page, int pageSize) throws SQLException {
+        return getLoans(status, keyword, null, null, page, pageSize);
+    }
+
+    public LoanManagementResult getLoans(String status, String keyword, LocalDate startDate, LocalDate endDate, int page, int pageSize) throws SQLException {
         requireStaffOrAdmin();
         int safePage = normalizePage(page);
         int safePageSize = normalizePageSize(pageSize);
@@ -122,8 +126,8 @@ public class StaffLoanReturnController {
         String safeKeyword = normalizeKeyword(keyword);
         int offset = (safePage - 1) * safePageSize;
 
-        List<Peminjaman> loans = peminjamanDao.findLoansForManagement(safeStatus, safeKeyword, safePageSize, offset);
-        int totalItems = peminjamanDao.countLoansForManagement(safeStatus, safeKeyword);
+        List<Peminjaman> loans = peminjamanDao.findLoansForManagement(safeStatus, safeKeyword, startDate, endDate, safePageSize, offset);
+        int totalItems = peminjamanDao.countLoansForManagement(safeStatus, safeKeyword, startDate, endDate);
         return new LoanManagementResult(loans, totalItems, safePage, safePageSize, safeStatus);
     }
 

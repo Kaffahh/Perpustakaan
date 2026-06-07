@@ -284,7 +284,6 @@ public class PeminjamanDao {
                 resultSet.getString("judul"),
                 resultSet.getString("penulis"),
                 resultSet.getString("kategori"));
-        // Store user info in a thread-safe way or use a separate DTO
         p.setNamaUser(resultSet.getString("nama_user"));
         p.setUsernameUser(resultSet.getString("username"));
         return p;
@@ -331,11 +330,16 @@ public class PeminjamanDao {
     }
 
     public List<Peminjaman> findLoansForManagement(String status, String keyword, int limit, int offset) throws SQLException {
+        return findLoansForManagement(status, keyword, null, null, limit, offset);
+    }
+
+    public List<Peminjaman> findLoansForManagement(String status, String keyword, LocalDate startDate, LocalDate endDate, int limit, int offset) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku JOIN users u ON u.id_user = p.id_user WHERE 1=1");
         List<Object> parameters = new ArrayList<>();
 
         appendManagementStatusFilter(sql, parameters, status);
         appendManagementKeywordFilter(sql, parameters, keyword);
+        appendManagementDateRangeFilter(sql, parameters, startDate, endDate);
         sql.append(" ORDER BY p.tanggal_pinjam DESC, p.id_peminjaman DESC LIMIT ? OFFSET ?");
         parameters.add(limit);
         parameters.add(offset);
@@ -360,11 +364,16 @@ public class PeminjamanDao {
     }
 
     public int countLoansForManagement(String status, String keyword) throws SQLException {
+        return countLoansForManagement(status, keyword, null, null);
+    }
+
+    public int countLoansForManagement(String status, String keyword, LocalDate startDate, LocalDate endDate) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku JOIN users u ON u.id_user = p.id_user WHERE 1=1");
         List<Object> parameters = new ArrayList<>();
 
         appendManagementStatusFilter(sql, parameters, status);
         appendManagementKeywordFilter(sql, parameters, keyword);
+        appendManagementDateRangeFilter(sql, parameters, startDate, endDate);
 
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql.toString())) {
@@ -466,6 +475,23 @@ public class PeminjamanDao {
                 sql.append(" AND p.status = ?");
                 parameters.add(status);
             }
+        }
+    }
+
+    private void appendManagementDateRangeFilter(StringBuilder sql, List<Object> parameters, LocalDate startDate, LocalDate endDate) {
+        if (startDate != null) {
+            sql.append(" AND (p.tanggal_pinjam >= ? OR p.tanggal_jatuh_tempo >= ? OR p.tanggal_kembali >= ?)");
+            Date start = Date.valueOf(startDate);
+            parameters.add(start);
+            parameters.add(start);
+            parameters.add(start);
+        }
+        if (endDate != null) {
+            sql.append(" AND (p.tanggal_pinjam <= ? OR p.tanggal_jatuh_tempo <= ? OR p.tanggal_kembali <= ?)");
+            Date end = Date.valueOf(endDate);
+            parameters.add(end);
+            parameters.add(end);
+            parameters.add(end);
         }
     }
 

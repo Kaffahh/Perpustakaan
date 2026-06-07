@@ -5,6 +5,7 @@ import com.mycompany.perpustakaan.model.Kunjungan;
 import com.mycompany.perpustakaan.model.User;
 import com.mycompany.perpustakaan.utils.SessionManager;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 
 public class VisitController {
@@ -50,16 +51,24 @@ public class VisitController {
     }
 
     public List<Kunjungan> searchVisits(String keyword, String status, int page, int pageSize) throws SQLException {
+        return searchVisits(keyword, status, null, null, page, pageSize);
+    }
+
+    public List<Kunjungan> searchVisits(String keyword, String status, LocalDate startDate, LocalDate endDate, int page, int pageSize) throws SQLException {
         requireStaffOrAdmin();
         int safePage = page < 1 ? 1 : page;
         int safePageSize = pageSize < 1 ? 50 : Math.min(pageSize, 200);
         int offset = (safePage - 1) * safePageSize;
-        return kunjunganDao.searchVisits(normalizeOptionalText(keyword), normalizeOptionalText(status), safePageSize, offset);
+        return kunjunganDao.searchVisits(normalizeOptionalText(keyword), normalizeOptionalText(status), startDate, endDate, safePageSize, offset);
     }
 
     public int countVisits(String keyword, String status) throws SQLException {
+        return countVisits(keyword, status, null, null);
+    }
+
+    public int countVisits(String keyword, String status, LocalDate startDate, LocalDate endDate) throws SQLException {
         requireStaffOrAdmin();
-        return kunjunganDao.countVisits(normalizeOptionalText(keyword), normalizeOptionalText(status));
+        return kunjunganDao.countVisits(normalizeOptionalText(keyword), normalizeOptionalText(status), startDate, endDate);
     }
 
     public Kunjungan finishVisit(int idKunjungan) throws SQLException {

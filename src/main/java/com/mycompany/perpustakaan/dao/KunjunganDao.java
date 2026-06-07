@@ -3,10 +3,12 @@ package com.mycompany.perpustakaan.dao;
 import com.mycompany.perpustakaan.config.Database;
 import com.mycompany.perpustakaan.model.Kunjungan;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,10 +49,15 @@ public class KunjunganDao {
     }
 
     public List<Kunjungan> searchVisits(String keyword, String status, int limit, int offset) throws SQLException {
+        return searchVisits(keyword, status, null, null, limit, offset);
+    }
+
+    public List<Kunjungan> searchVisits(String keyword, String status, LocalDate startDate, LocalDate endDate, int limit, int offset) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT id_kunjungan, id_user, nama_pengunjung, jenis_pengunjung, asal_instansi, keperluan, status_kunjungan, tanggal_kunjungan "
                 + "FROM kunjungan WHERE 1=1");
         List<Object> params = new ArrayList<>();
         appendVisitFilters(sql, params, keyword, status);
+        appendDateRangeFilter(sql, params, startDate, endDate, "tanggal_kunjungan");
         sql.append(" ORDER BY tanggal_kunjungan DESC, id_kunjungan DESC LIMIT ? OFFSET ?");
         params.add(limit);
         params.add(offset);
@@ -71,9 +78,14 @@ public class KunjunganDao {
     }
 
     public int countVisits(String keyword, String status) throws SQLException {
+        return countVisits(keyword, status, null, null);
+    }
+
+    public int countVisits(String keyword, String status, LocalDate startDate, LocalDate endDate) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM kunjungan WHERE 1=1");
         List<Object> params = new ArrayList<>();
         appendVisitFilters(sql, params, keyword, status);
+        appendDateRangeFilter(sql, params, startDate, endDate, "tanggal_kunjungan");
 
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql.toString())) {
@@ -156,6 +168,17 @@ public class KunjunganDao {
             return null;
         }
         return status.trim().toLowerCase();
+    }
+
+    private void appendDateRangeFilter(StringBuilder sql, List<Object> params, LocalDate startDate, LocalDate endDate, String columnName) {
+        if (startDate != null) {
+            sql.append(" AND DATE(").append(columnName).append(") >= ?");
+            params.add(Date.valueOf(startDate));
+        }
+        if (endDate != null) {
+            sql.append(" AND DATE(").append(columnName).append(") <= ?");
+            params.add(Date.valueOf(endDate));
+        }
     }
 
     private void setParameters(PreparedStatement statement, List<Object> params) throws SQLException {

@@ -218,8 +218,25 @@ public class LibraryApi {
         return summaries;
     }
 
+    public VisitPage getVisitPage(String keyword, String status, int page, int pageSize) throws SQLException {
+        return getVisitPage(keyword, status, null, null, page, pageSize);
+    }
+
+    public VisitPage getVisitPage(String keyword, String status, LocalDate startDate, LocalDate endDate, int page, int pageSize) throws SQLException {
+        int safePage = normalizePage(page);
+        int safePageSize = normalizePageSize(pageSize, 200);
+        List<VisitSummary> visits = searchVisits(keyword, status, startDate, endDate, safePage, safePageSize);
+        int totalItems = countVisits(keyword, status, startDate, endDate);
+        return new VisitPage(visits, totalItems, safePage, safePageSize, normalizeText(keyword), normalizeText(status));
+    }
+
     public List<VisitSummary> searchVisits(String keyword, String status, int page, int pageSize) throws SQLException {
-        List<Kunjungan> visits = visitController.searchVisits(keyword, status, page, pageSize);
+        return searchVisits(keyword, status, null, null, page, pageSize);
+    }
+
+    public List<VisitSummary> searchVisits(String keyword, String status, LocalDate startDate, LocalDate endDate, int page, int pageSize) throws SQLException {
+        List<Kunjungan> visits = visitController.searchVisits(
+                normalizeText(keyword), normalizeText(status), startDate, endDate, page, pageSize);
         List<VisitSummary> summaries = new ArrayList<>();
         for (Kunjungan visit : visits) {
             summaries.add(VisitSummary.from(visit));
@@ -227,16 +244,12 @@ public class LibraryApi {
         return summaries;
     }
 
-    public VisitPage getVisitPage(String keyword, String status, int page, int pageSize) throws SQLException {
-        int safePage = normalizePage(page);
-        int safePageSize = normalizePageSize(pageSize, 200);
-        List<VisitSummary> visits = searchVisits(keyword, status, safePage, safePageSize);
-        int totalItems = countVisits(keyword, status);
-        return new VisitPage(visits, totalItems, safePage, safePageSize, normalizeText(keyword), normalizeText(status));
+    public int countVisits(String keyword, String status) throws SQLException {
+        return countVisits(keyword, status, null, null);
     }
 
-    public int countVisits(String keyword, String status) throws SQLException {
-        return visitController.countVisits(keyword, status);
+    public int countVisits(String keyword, String status, LocalDate startDate, LocalDate endDate) throws SQLException {
+        return visitController.countVisits(normalizeText(keyword), normalizeText(status), startDate, endDate);
     }
 
     public VisitResponse finishVisit(int idKunjungan) throws SQLException {
@@ -330,7 +343,11 @@ public class LibraryApi {
     }
 
     public LoanManagementPage searchLoansForManagement(String status, String keyword, int page, int pageSize) throws SQLException {
-        StaffLoanReturnController.LoanManagementResult result = staffLoanReturnController.getLoans(status, keyword, page, pageSize);
+        return searchLoansForManagement(status, keyword, null, null, page, pageSize);
+    }
+
+    public LoanManagementPage searchLoansForManagement(String status, String keyword, LocalDate startDate, LocalDate endDate, int page, int pageSize) throws SQLException {
+        StaffLoanReturnController.LoanManagementResult result = staffLoanReturnController.getLoans(status, keyword, startDate, endDate, page, pageSize);
         return new LoanManagementPage(
                 toLoanSummaries(result.getLoans()),
                 result.getTotalItems(),
