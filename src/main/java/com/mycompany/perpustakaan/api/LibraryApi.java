@@ -19,8 +19,10 @@ import com.mycompany.perpustakaan.model.Peminjaman;
 import com.mycompany.perpustakaan.model.User;
 import com.mycompany.perpustakaan.utils.FineCalculator;
 import com.mycompany.perpustakaan.utils.PasswordHasher;
+import com.mycompany.perpustakaan.utils.ReportExporter;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -41,6 +43,7 @@ public class LibraryApi {
     private final CategoryDao categoryDao;
     private final FineDao fineDao;
     private final NotificationDao notificationDao;
+    private final ReportExporter reportExporter;
 
     public LibraryApi() {
         this.authController = new AuthController();
@@ -56,6 +59,7 @@ public class LibraryApi {
         this.categoryDao = new CategoryDao();
         this.fineDao = new FineDao();
         this.notificationDao = new NotificationDao();
+        this.reportExporter = new ReportExporter();
     }
 
     public AuthResponse login(String username, String password) throws SQLException {
@@ -610,6 +614,34 @@ public class LibraryApi {
         }
     }
 
+    public ReportExportResponse exportFineReport(String format, String outputDirectory, String keyword, String status) throws SQLException {
+        requireStaffOrAdmin("export laporan denda.");
+        try {
+            String safeFormat = adminReportController.normalizeFormat(format);
+            Path filePath = reportExporter.exportFines(
+                    getFines(keyword, status, 1, 5000),
+                    safeFormat,
+                    normalizeOutputDirectory(outputDirectory));
+            return ReportExportResponse.success("Laporan denda berhasil diexport.", filePath.toAbsolutePath().toString(), safeFormat);
+        } catch (IllegalArgumentException | IllegalStateException | IOException exception) {
+            return ReportExportResponse.failure(messageOf(exception, "Operasi gagal."));
+        }
+    }
+
+    public ReportExportResponse exportMemberReport(String format, String outputDirectory, String keyword, String statusAkun) throws SQLException {
+        requireAdmin("export laporan member.");
+        try {
+            String safeFormat = adminReportController.normalizeFormat(format);
+            Path filePath = reportExporter.exportMembers(
+                    searchMembers(keyword, statusAkun, 1, 5000).getMembers(),
+                    safeFormat,
+                    normalizeOutputDirectory(outputDirectory));
+            return ReportExportResponse.success("Laporan member berhasil diexport.", filePath.toAbsolutePath().toString(), safeFormat);
+        } catch (IllegalArgumentException | IllegalStateException | IOException exception) {
+            return ReportExportResponse.failure(messageOf(exception, "Operasi gagal."));
+        }
+    }
+
     public MemberResponse addMember(MemberRequest request) throws SQLException {
         try {
             User member = memberController.addMember(request);
@@ -758,6 +790,13 @@ public class LibraryApi {
             return Math.min(50, maxPageSize);
         }
         return Math.min(pageSize, maxPageSize);
+    }
+
+    private Path normalizeOutputDirectory(String outputDirectory) {
+        if (outputDirectory == null || outputDirectory.isBlank()) {
+            return Path.of("exports");
+        }
+        return Path.of(outputDirectory.trim());
     }
 
     private User requireStaffOrAdmin(String action) {

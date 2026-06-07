@@ -11,6 +11,8 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.mycompany.perpustakaan.api.InventoryReportRow;
 import com.mycompany.perpustakaan.api.LoanReportRow;
+import com.mycompany.perpustakaan.api.FineSummary;
+import com.mycompany.perpustakaan.api.MemberSummary;
 import com.mycompany.perpustakaan.api.VisitReportRow;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -57,6 +59,26 @@ public class ReportExporter {
             return target;
         }
         exportVisitsXlsx(rows, target);
+        return target;
+    }
+
+    public Path exportFines(List<FineSummary> rows, String format, Path outputDirectory) throws IOException {
+        Path target = buildTargetPath(outputDirectory, "laporan-denda", format);
+        if ("pdf".equals(format)) {
+            exportFinesPdf(rows, target);
+            return target;
+        }
+        exportFinesXlsx(rows, target);
+        return target;
+    }
+
+    public Path exportMembers(List<MemberSummary> rows, String format, Path outputDirectory) throws IOException {
+        Path target = buildTargetPath(outputDirectory, "laporan-member", format);
+        if ("pdf".equals(format)) {
+            exportMembersPdf(rows, target);
+            return target;
+        }
+        exportMembersXlsx(rows, target);
         return target;
     }
 
@@ -146,6 +168,56 @@ public class ReportExporter {
         }
     }
 
+    private void exportFinesXlsx(List<FineSummary> rows, Path target) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook();
+             FileOutputStream outputStream = new FileOutputStream(target.toFile())) {
+
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Denda");
+            CellStyle headerStyle = createHeaderStyle(workbook);
+            writeRow(sheet.createRow(0), headerStyle, "ID Peminjaman", "Nama User", "Username", "Judul Buku", "Jatuh Tempo", "Tanggal Kembali", "Nominal Denda", "Status Pembayaran", "Updated At");
+
+            int rowIndex = 1;
+            for (FineSummary row : rows) {
+                writeRow(sheet.createRow(rowIndex++), null,
+                        row.getIdPeminjaman(),
+                        row.getNamaUser(),
+                        row.getUsername(),
+                        row.getJudulBuku(),
+                        formatDate(row.getTanggalJatuhTempo()),
+                        formatDate(row.getTanggalKembali()),
+                        row.getNominalDenda(),
+                        row.getStatusPembayaran(),
+                        row.getUpdatedAt());
+            }
+            autoSize(sheet, 9);
+            workbook.write(outputStream);
+        }
+    }
+
+    private void exportMembersXlsx(List<MemberSummary> rows, Path target) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook();
+             FileOutputStream outputStream = new FileOutputStream(target.toFile())) {
+
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Member");
+            CellStyle headerStyle = createHeaderStyle(workbook);
+            writeRow(sheet.createRow(0), headerStyle, "ID User", "Nama", "Username", "Email", "Role", "Status", "Created At");
+
+            int rowIndex = 1;
+            for (MemberSummary row : rows) {
+                writeRow(sheet.createRow(rowIndex++), null,
+                        row.getIdUser(),
+                        row.getNama(),
+                        row.getUsername(),
+                        row.getEmail(),
+                        row.getRole(),
+                        row.getStatusAkun(),
+                        row.getCreatedAt());
+            }
+            autoSize(sheet, 7);
+            workbook.write(outputStream);
+        }
+    }
+
     private void exportInventoryPdf(List<InventoryReportRow> rows, Path target) throws IOException {
         try (FileOutputStream outputStream = new FileOutputStream(target.toFile())) {
             Document document = new Document(PageSize.A4.rotate());
@@ -221,6 +293,57 @@ public class ReportExporter {
                         row.getKeperluan(),
                         row.getStatusKunjungan(),
                         row.getTanggalKunjungan());
+            }
+            document.add(table);
+            document.close();
+        }
+    }
+
+    private void exportFinesPdf(List<FineSummary> rows, Path target) throws IOException {
+        try (FileOutputStream outputStream = new FileOutputStream(target.toFile())) {
+            Document document = new Document(PageSize.A4.rotate());
+            PdfWriter.getInstance(document, outputStream);
+            document.open();
+            writeTitle(document, "Laporan Denda");
+
+            PdfPTable table = new PdfPTable(8);
+            table.setWidthPercentage(100);
+            writePdfHeader(table, "ID", "Nama", "Username", "Buku", "Jatuh Tempo", "Kembali", "Denda", "Status");
+            for (FineSummary row : rows) {
+                writePdfCells(table,
+                        row.getIdPeminjaman(),
+                        row.getNamaUser(),
+                        row.getUsername(),
+                        row.getJudulBuku(),
+                        formatDate(row.getTanggalJatuhTempo()),
+                        formatDate(row.getTanggalKembali()),
+                        row.getNominalDenda(),
+                        row.getStatusPembayaran());
+            }
+            document.add(table);
+            document.close();
+        }
+    }
+
+    private void exportMembersPdf(List<MemberSummary> rows, Path target) throws IOException {
+        try (FileOutputStream outputStream = new FileOutputStream(target.toFile())) {
+            Document document = new Document(PageSize.A4.rotate());
+            PdfWriter.getInstance(document, outputStream);
+            document.open();
+            writeTitle(document, "Laporan Member");
+
+            PdfPTable table = new PdfPTable(7);
+            table.setWidthPercentage(100);
+            writePdfHeader(table, "ID", "Nama", "Username", "Email", "Role", "Status", "Created At");
+            for (MemberSummary row : rows) {
+                writePdfCells(table,
+                        row.getIdUser(),
+                        row.getNama(),
+                        row.getUsername(),
+                        row.getEmail(),
+                        row.getRole(),
+                        row.getStatusAkun(),
+                        row.getCreatedAt());
             }
             document.add(table);
             document.close();

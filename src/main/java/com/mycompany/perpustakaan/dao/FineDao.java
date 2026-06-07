@@ -77,7 +77,7 @@ public class FineDao {
         ensureFinePaymentTable();
         String status = normalizePaymentStatus(statusPembayaran);
         String sql = "INSERT INTO fine_payments (id_peminjaman, status_pembayaran, paid_at, updated_by, note) "
-                + "VALUES (?, ?, CASE WHEN ? = 'paid' THEN NOW() ELSE NULL END) "
+                + "VALUES (?, ?, CASE WHEN ? = 'paid' THEN NOW() ELSE NULL END, ?, ?) "
                 + "ON DUPLICATE KEY UPDATE status_pembayaran = VALUES(status_pembayaran), "
                 + "paid_at = VALUES(paid_at), updated_by = VALUES(updated_by), note = VALUES(note), updated_at = CURRENT_TIMESTAMP";
         try (Connection connection = Database.getConnection();
