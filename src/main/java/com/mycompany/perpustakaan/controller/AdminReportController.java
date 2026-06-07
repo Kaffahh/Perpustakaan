@@ -4,6 +4,7 @@ import com.mycompany.perpustakaan.api.AdminDashboardSummary;
 import com.mycompany.perpustakaan.api.InventoryReportRow;
 import com.mycompany.perpustakaan.api.LoanReportRow;
 import com.mycompany.perpustakaan.api.PopularBookReportRow;
+import com.mycompany.perpustakaan.api.VisitReportRow;
 import com.mycompany.perpustakaan.dao.ReportDao;
 import com.mycompany.perpustakaan.model.User;
 import com.mycompany.perpustakaan.utils.ReportExporter;
@@ -48,6 +49,11 @@ public class AdminReportController {
     public List<PopularBookReportRow> getPopularBookReport(int limit) throws SQLException {
         requireAdmin();
         return reportDao.getPopularBookReport(normalizeLimit(limit));
+    }
+
+    public List<VisitReportRow> getVisitReport(String keyword, String status) throws SQLException {
+        requireAdmin();
+        return reportDao.getVisitReport(normalizeOptionalText(keyword), normalizeOptionalText(status));
     }
 
     public Path exportInventoryReport(String format, String outputDirectory) throws SQLException, IOException {
@@ -109,5 +115,12 @@ public class AdminReportController {
             return 10;
         }
         return Math.min(limit, 100);
+    }
+
+    private String normalizeOptionalText(String value) {
+        if (value == null || value.isBlank() || "semua".equalsIgnoreCase(value)) {
+            return null;
+        }
+        return value.trim();
     }
 }

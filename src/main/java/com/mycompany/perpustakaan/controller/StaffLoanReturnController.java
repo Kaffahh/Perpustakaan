@@ -99,14 +99,19 @@ public class StaffLoanReturnController {
     }
 
     public LoanManagementResult getLoans(String status, int page, int pageSize) throws SQLException {
+        return getLoans(status, null, page, pageSize);
+    }
+
+    public LoanManagementResult getLoans(String status, String keyword, int page, int pageSize) throws SQLException {
         requireStaffOrAdmin();
         int safePage = normalizePage(page);
         int safePageSize = normalizePageSize(pageSize);
         String safeStatus = normalizeStatus(status);
+        String safeKeyword = normalizeKeyword(keyword);
         int offset = (safePage - 1) * safePageSize;
 
-        List<Peminjaman> loans = peminjamanDao.findLoansForManagement(safeStatus, safePageSize, offset);
-        int totalItems = peminjamanDao.countLoansForManagement(safeStatus);
+        List<Peminjaman> loans = peminjamanDao.findLoansForManagement(safeStatus, safeKeyword, safePageSize, offset);
+        int totalItems = peminjamanDao.countLoansForManagement(safeStatus, safeKeyword);
         return new LoanManagementResult(loans, totalItems, safePage, safePageSize, safeStatus);
     }
 
@@ -141,6 +146,13 @@ public class StaffLoanReturnController {
             throw new IllegalArgumentException("Status peminjaman tidak valid.");
         }
         return normalizedStatus;
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        return keyword.trim();
     }
 
     private User requireStaffOrAdmin() {

@@ -297,10 +297,15 @@ public class PeminjamanDao {
     }
 
     public List<Peminjaman> findLoansForManagement(String status, int limit, int offset) throws SQLException {
-        StringBuilder sql = new StringBuilder("SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku WHERE 1=1");
+        return findLoansForManagement(status, null, limit, offset);
+    }
+
+    public List<Peminjaman> findLoansForManagement(String status, String keyword, int limit, int offset) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT p.id_peminjaman, p.id_user, p.id_buku, p.tanggal_pinjam, p.tanggal_jatuh_tempo, p.tanggal_kembali, p.status, p.denda, p.created_by, b.kode_buku, b.judul, b.penulis, b.kategori FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku JOIN users u ON u.id_user = p.id_user WHERE 1=1");
         List<Object> parameters = new ArrayList<>();
 
         appendManagementStatusFilter(sql, parameters, status);
+        appendManagementKeywordFilter(sql, parameters, keyword);
         sql.append(" ORDER BY p.tanggal_pinjam DESC, p.id_peminjaman DESC LIMIT ? OFFSET ?");
         parameters.add(limit);
         parameters.add(offset);
@@ -321,10 +326,15 @@ public class PeminjamanDao {
     }
 
     public int countLoansForManagement(String status) throws SQLException {
-        StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM peminjaman p WHERE 1=1");
+        return countLoansForManagement(status, null);
+    }
+
+    public int countLoansForManagement(String status, String keyword) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM peminjaman p JOIN buku b ON b.id_buku = p.id_buku JOIN users u ON u.id_user = p.id_user WHERE 1=1");
         List<Object> parameters = new ArrayList<>();
 
         appendManagementStatusFilter(sql, parameters, status);
+        appendManagementKeywordFilter(sql, parameters, keyword);
 
         try (Connection connection = Database.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql.toString())) {
@@ -426,6 +436,18 @@ public class PeminjamanDao {
                 sql.append(" AND p.status = ?");
                 parameters.add(status);
             }
+        }
+    }
+
+    private void appendManagementKeywordFilter(StringBuilder sql, List<Object> parameters, String keyword) {
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String like = "%" + keyword.trim() + "%";
+            sql.append(" AND (b.judul LIKE ? OR b.penulis LIKE ? OR b.kode_buku LIKE ? OR u.nama_lengkap LIKE ? OR u.username LIKE ?)");
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
         }
     }
 

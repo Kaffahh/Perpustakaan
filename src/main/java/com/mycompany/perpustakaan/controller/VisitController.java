@@ -49,6 +49,19 @@ public class VisitController {
         return kunjunganDao.findRecentVisits(safeLimit);
     }
 
+    public List<Kunjungan> searchVisits(String keyword, String status, int page, int pageSize) throws SQLException {
+        requireStaffOrAdmin();
+        int safePage = page < 1 ? 1 : page;
+        int safePageSize = pageSize < 1 ? 50 : Math.min(pageSize, 200);
+        int offset = (safePage - 1) * safePageSize;
+        return kunjunganDao.searchVisits(normalizeOptionalText(keyword), normalizeOptionalText(status), safePageSize, offset);
+    }
+
+    public int countVisits(String keyword, String status) throws SQLException {
+        requireStaffOrAdmin();
+        return kunjunganDao.countVisits(normalizeOptionalText(keyword), normalizeOptionalText(status));
+    }
+
     public Kunjungan finishVisit(int idKunjungan) throws SQLException {
         return updateVisitStatus(idKunjungan, "selesai");
     }

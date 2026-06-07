@@ -43,14 +43,23 @@ public class KunjunganDao {
     }
 
     public List<Kunjungan> findRecentVisits(int limit) throws SQLException {
-        String sql = "SELECT id_kunjungan, id_user, nama_pengunjung, jenis_pengunjung, asal_instansi, keperluan, status_kunjungan, tanggal_kunjungan "
-                + "FROM kunjungan ORDER BY tanggal_kunjungan DESC, id_kunjungan DESC LIMIT ?";
+        return searchVisits(null, null, limit, 0);
+    }
+
+    public List<Kunjungan> searchVisits(String keyword, String status, int limit, int offset) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT id_kunjungan, id_user, nama_pengunjung, jenis_pengunjung, asal_instansi, keperluan, status_kunjungan, tanggal_kunjungan "
+                + "FROM kunjungan WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+        appendVisitFilters(sql, params, keyword, status);
+        sql.append(" ORDER BY tanggal_kunjungan DESC, id_kunjungan DESC LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
 
         List<Kunjungan> visits = new ArrayList<>();
         try (Connection connection = Database.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
 
-            statement.setInt(1, limit);
+            setParameters(statement, params);
 
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
@@ -59,6 +68,24 @@ public class KunjunganDao {
             }
         }
         return visits;
+    }
+
+    public int countVisits(String keyword, String status) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM kunjungan WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+        appendVisitFilters(sql, params, keyword, status);
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            setParameters(statement, params);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("total");
+                }
+            }
+        }
+        return 0;
     }
 
     public Kunjungan updateStatus(int idKunjungan, String statusKunjungan) throws SQLException {
@@ -106,5 +133,34 @@ public class KunjunganDao {
                 resultSet.getString("keperluan"),
                 resultSet.getString("status_kunjungan"),
                 resultSet.getString("tanggal_kunjungan"));
+    }
+
+    private void appendVisitFilters(StringBuilder sql, List<Object> params, String keyword, String status) {
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String like = "%" + keyword.trim() + "%";
+            sql.append(" AND (nama_pengunjung LIKE ? OR jenis_pengunjung LIKE ? OR asal_instansi LIKE ? OR keperluan LIKE ?)");
+            params.add(like);
+            params.add(like);
+            params.add(like);
+            params.add(like);
+        }
+        String normalizedStatus = normalizeStatus(status);
+        if (normalizedStatus != null) {
+            sql.append(" AND status_kunjungan = ?");
+            params.add(normalizedStatus);
+        }
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank() || "semua".equalsIgnoreCase(status) || "all".equalsIgnoreCase(status)) {
+            return null;
+        }
+        return status.trim().toLowerCase();
+    }
+
+    private void setParameters(PreparedStatement statement, List<Object> params) throws SQLException {
+        for (int i = 0; i < params.size(); i++) {
+            statement.setObject(i + 1, params.get(i));
+        }
     }
 }

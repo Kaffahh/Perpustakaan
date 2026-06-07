@@ -10,6 +10,8 @@ import com.mycompany.perpustakaan.controller.MemberController;
 import com.mycompany.perpustakaan.controller.StaffBookController;
 import com.mycompany.perpustakaan.controller.StaffLoanReturnController;
 import com.mycompany.perpustakaan.controller.VisitController;
+import com.mycompany.perpustakaan.dao.CategoryDao;
+import com.mycompany.perpustakaan.dao.FineDao;
 import com.mycompany.perpustakaan.model.Buku;
 import com.mycompany.perpustakaan.model.Kunjungan;
 import com.mycompany.perpustakaan.model.Peminjaman;
@@ -34,6 +36,8 @@ public class LibraryApi {
     private final StaffLoanReturnController staffLoanReturnController;
     private final AdminReportController adminReportController;
     private final MemberController memberController;
+    private final CategoryDao categoryDao;
+    private final FineDao fineDao;
 
     public LibraryApi() {
         this.authController = new AuthController();
@@ -46,6 +50,8 @@ public class LibraryApi {
         this.staffLoanReturnController = new StaffLoanReturnController();
         this.adminReportController = new AdminReportController();
         this.memberController = new MemberController();
+        this.categoryDao = new CategoryDao();
+        this.fineDao = new FineDao();
     }
 
     public AuthResponse login(String username, String password) throws SQLException {
@@ -174,6 +180,19 @@ public class LibraryApi {
         return summaries;
     }
 
+    public List<VisitSummary> searchVisits(String keyword, String status, int page, int pageSize) throws SQLException {
+        List<Kunjungan> visits = visitController.searchVisits(keyword, status, page, pageSize);
+        List<VisitSummary> summaries = new ArrayList<>();
+        for (Kunjungan visit : visits) {
+            summaries.add(VisitSummary.from(visit));
+        }
+        return summaries;
+    }
+
+    public int countVisits(String keyword, String status) throws SQLException {
+        return visitController.countVisits(keyword, status);
+    }
+
     public VisitResponse finishVisit(int idKunjungan) throws SQLException {
         try {
             Kunjungan kunjungan = visitController.finishVisit(idKunjungan);
@@ -264,6 +283,16 @@ public class LibraryApi {
                 result.getStatus());
     }
 
+    public LoanManagementPage searchLoansForManagement(String status, String keyword, int page, int pageSize) throws SQLException {
+        StaffLoanReturnController.LoanManagementResult result = staffLoanReturnController.getLoans(status, keyword, page, pageSize);
+        return new LoanManagementPage(
+                toLoanSummaries(result.getLoans()),
+                result.getTotalItems(),
+                result.getPage(),
+                result.getPageSize(),
+                result.getStatus());
+    }
+
     public List<LoanSummary> getPendingLoanRequests() throws SQLException {
         List<Peminjaman> loans = staffLoanReturnController.getPendingLoans();
         return toLoanSummaries(loans);
@@ -301,6 +330,106 @@ public class LibraryApi {
 
     public List<PopularBookReportRow> getPopularBookReport(int limit) throws SQLException {
         return adminReportController.getPopularBookReport(limit);
+    }
+
+    public List<VisitReportRow> getVisitReport(String keyword, String status) throws SQLException {
+        return adminReportController.getVisitReport(keyword, status);
+    }
+
+    public List<CategorySummary> getCategorySummaries() throws SQLException {
+        requireStaffOrAdmin("mengakses kategori.");
+        return categoryDao.findCategorySummaries();
+    }
+
+    public BookResponse renameCategory(String oldName, String newName) throws SQLException {
+        requireAdmin("mengubah kategori.");
+        try {
+            int updated = categoryDao.renameCategory(oldName, newName);
+            return BookResponse.success("Kategori berhasil diperbarui untuk " + updated + " buku.", null);
+        } catch (IllegalArgumentException exception) {
+            return BookResponse.failure(exception.getMessage());
+        }
+    }
+
+    public BookResponse clearCategory(String categoryName) throws SQLException {
+        requireAdmin("menghapus kategori.");
+        try {
+            int updated = categoryDao.clearCategory(categoryName);
+            return BookResponse.success("Kategori berhasil dilepas dari " + updated + " buku.", null);
+        } catch (IllegalArgumentException exception) {
+            return BookResponse.failure(exception.getMessage());
+        }
+    }
+
+    public List<FineSummary> getFines(String keyword, String status, int page, int pageSize) throws SQLException {
+        requireStaffOrAdmin("mengakses denda.");
+        int safePage = page < 1 ? 1 : page;
+        int safePageSize = pageSize < 1 ? 50 : Math.min(pageSize, 100);
+        int offset = (safePage - 1) * safePageSize;
+        return fineDao.findFines(normalizeText(keyword), normalizeText(status), safePageSize, offset);
+    }
+
+    public int countFines(String keyword, String status) throws SQLException {
+        requireStaffOrAdmin("mengakses denda.");
+        return fineDao.countFines(normalizeText(keyword), normalizeText(status));
+    }
+
+    public LoanResponse markFinePaid(int idPeminjaman) throws SQLException {
+        requireStaffOrAdmin("memproses pembayaran denda.");
+        try {
+            fineDao.markFineStatus(idPeminjaman, "paid");
+            return LoanResponse.success("Denda berhasil ditandai lunas.", null);
+        } catch (IllegalArgumentException exception) {
+            return LoanResponse.failure(exception.getMessage());
+        }
+    }
+
+    public LoanResponse waiveFine(int idPeminjaman) throws SQLException {
+        requireAdmin("menghapus/waive denda.");
+        try {
+            fineDao.markFineStatus(idPeminjaman, "waived");
+            return LoanResponse.success("Denda berhasil di-waive.", null);
+        } catch (IllegalArgumentException exception) {
+            return LoanResponse.failure(exception.getMessage());
+        }
+    }
+
+    public List<NotificationSummary> getNotifications(int limit) throws SQLException {
+        User current = authController.getCurrentUser();
+        if (current == null) {
+            throw new IllegalStateException("User harus login sebelum melihat notifikasi.");
+        }
+
+        int safeLimit = limit < 1 ? 5 : Math.min(limit, 20);
+        List<NotificationSummary> notifications = new ArrayList<>();
+        String today = LocalDate.now().toString();
+
+        if (current.isStaff() || current.isAdmin()) {
+            int pendingLoans = staffLoanReturnController.getPendingLoans().size();
+            if (pendingLoans > 0) {
+                notifications.add(new NotificationSummary("loan_request", "Pending loan request",
+                        pendingLoans + " request peminjaman menunggu persetujuan.", today));
+            }
+
+            int unpaidFines = fineDao.countFines(null, "unpaid");
+            if (unpaidFines > 0) {
+                notifications.add(new NotificationSummary("fine", "Denda belum lunas",
+                        unpaidFines + " data denda masih berstatus unpaid.", today));
+            }
+        } else {
+            for (LoanSummary loan : getCurrentLoans()) {
+                if (loan.getHariTerlambat() > 0) {
+                    notifications.add(new NotificationSummary("overdue", "Pinjaman terlambat",
+                            loan.getJudulBuku() + " terlambat " + loan.getHariTerlambat() + " hari.", today));
+                }
+            }
+        }
+
+        if (notifications.isEmpty()) {
+            notifications.add(new NotificationSummary("info", "Tidak ada notifikasi baru",
+                    "Semua aktivitas terbaru sudah aman.", today));
+        }
+        return notifications.size() > safeLimit ? notifications.subList(0, safeLimit) : notifications;
     }
 
     public ReportExportResponse exportInventoryReport(String format, String outputDirectory) throws SQLException {
@@ -418,5 +547,27 @@ public class LibraryApi {
             return null;
         }
         return value.trim();
+    }
+
+    private User requireStaffOrAdmin(String action) {
+        User current = authController.getCurrentUser();
+        if (current == null) {
+            throw new IllegalStateException("User harus login sebelum " + action);
+        }
+        if (!current.isStaff() && !current.isAdmin()) {
+            throw new IllegalStateException("Hanya staff atau admin yang boleh " + action);
+        }
+        return current;
+    }
+
+    private User requireAdmin(String action) {
+        User current = authController.getCurrentUser();
+        if (current == null) {
+            throw new IllegalStateException("User harus login sebelum " + action);
+        }
+        if (!current.isAdmin()) {
+            throw new IllegalStateException("Hanya admin yang boleh " + action);
+        }
+        return current;
     }
 }

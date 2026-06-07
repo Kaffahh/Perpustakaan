@@ -3,6 +3,7 @@ package com.mycompany.perpustakaan.dao;
 import com.mycompany.perpustakaan.api.InventoryReportRow;
 import com.mycompany.perpustakaan.api.LoanReportRow;
 import com.mycompany.perpustakaan.api.PopularBookReportRow;
+import com.mycompany.perpustakaan.api.VisitReportRow;
 import com.mycompany.perpustakaan.config.Database;
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -114,6 +115,47 @@ public class ReportDao {
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     rows.add(mapLoanRow(resultSet));
+                }
+            }
+        }
+        return rows;
+    }
+
+    public List<VisitReportRow> getVisitReport(String keyword, String status) throws SQLException {
+        StringBuilder sql = new StringBuilder(
+                "SELECT id_kunjungan, nama_pengunjung, jenis_pengunjung, asal_instansi, keperluan, status_kunjungan, tanggal_kunjungan "
+                + "FROM kunjungan WHERE 1=1");
+        List<Object> parameters = new ArrayList<>();
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String like = "%" + keyword.trim() + "%";
+            sql.append(" AND (nama_pengunjung LIKE ? OR jenis_pengunjung LIKE ? OR asal_instansi LIKE ? OR keperluan LIKE ?)");
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+            parameters.add(like);
+        }
+        if (status != null && !status.isBlank() && !"semua".equalsIgnoreCase(status)) {
+            sql.append(" AND status_kunjungan = ?");
+            parameters.add(status.trim().toLowerCase());
+        }
+        sql.append(" ORDER BY tanggal_kunjungan DESC, id_kunjungan DESC");
+
+        List<VisitReportRow> rows = new ArrayList<>();
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            setParameters(statement, parameters);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(new VisitReportRow(
+                            resultSet.getInt("id_kunjungan"),
+                            resultSet.getString("nama_pengunjung"),
+                            resultSet.getString("jenis_pengunjung"),
+                            resultSet.getString("asal_instansi"),
+                            resultSet.getString("keperluan"),
+                            resultSet.getString("status_kunjungan"),
+                            resultSet.getString("tanggal_kunjungan")));
                 }
             }
         }
