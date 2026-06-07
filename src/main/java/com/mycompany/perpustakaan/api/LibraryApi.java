@@ -574,6 +574,15 @@ public class LibraryApi {
         return notifications.size() > safeLimit ? notifications.subList(0, safeLimit) : notifications;
     }
 
+    public MemberResponse markAllNotificationsRead() throws SQLException {
+        User current = authController.getCurrentUser();
+        if (current == null) {
+            return MemberResponse.failure("User harus login sebelum mengubah notifikasi.");
+        }
+        notificationDao.markAllRead(current.getIdUser(), current.getRole());
+        return MemberResponse.success("Semua notifikasi sudah ditandai dibaca.", null);
+    }
+
     public ReportExportResponse exportInventoryReport(String format, String outputDirectory) throws SQLException {
         try {
             String filePath = adminReportController.exportInventoryReport(format, outputDirectory).toAbsolutePath().toString();
