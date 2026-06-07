@@ -527,6 +527,11 @@ public class LibraryApi {
                 normalizeText(status));
     }
 
+    public List<FinePaymentLogSummary> getFinePaymentLogs(int idPeminjaman) throws SQLException {
+        requireStaffOrAdmin("melihat riwayat pembayaran denda.");
+        return fineDao.findFinePaymentLogs(idPeminjaman);
+    }
+
     public LoanResponse markFinePaid(int idPeminjaman) throws SQLException {
         requireStaffOrAdmin("memproses pembayaran denda.");
         try {

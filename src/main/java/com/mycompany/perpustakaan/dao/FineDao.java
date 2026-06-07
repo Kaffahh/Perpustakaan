@@ -1,5 +1,6 @@
 package com.mycompany.perpustakaan.dao;
 
+import com.mycompany.perpustakaan.api.FinePaymentLogSummary;
 import com.mycompany.perpustakaan.api.FineSummary;
 import com.mycompany.perpustakaan.config.Database;
 import java.math.BigDecimal;
@@ -111,6 +112,34 @@ public class FineDao {
             }
         }
         return BigDecimal.ZERO;
+    }
+
+    public List<FinePaymentLogSummary> findFinePaymentLogs(int idPeminjaman) throws SQLException {
+        ensureFinePaymentTable();
+        String sql = "SELECT l.id_peminjaman, l.status_pembayaran, l.actor_user_id, "
+                + "COALESCE(u.nama_lengkap, 'System') AS actor_name, l.note, l.created_at "
+                + "FROM fine_payment_logs l "
+                + "LEFT JOIN users u ON u.id_user = l.actor_user_id "
+                + "WHERE l.id_peminjaman = ? "
+                + "ORDER BY l.created_at ASC";
+        List<FinePaymentLogSummary> logs = new ArrayList<>();
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, idPeminjaman);
+            try (ResultSet rs = statement.executeQuery()) {
+                while (rs.next()) {
+                    Integer actorId = rs.getObject("actor_user_id") != null ? rs.getInt("actor_user_id") : null;
+                    logs.add(new FinePaymentLogSummary(
+                            rs.getInt("id_peminjaman"),
+                            rs.getString("status_pembayaran"),
+                            actorId,
+                            rs.getString("actor_name"),
+                            rs.getString("note"),
+                            rs.getString("created_at")));
+                }
+            }
+        }
+        return logs;
     }
 
     private void ensureFinePaymentTable() throws SQLException {
