@@ -14,7 +14,7 @@ public class NotificationDao {
 
     public List<NotificationSummary> findNotifications(Integer targetUserId, String role, int limit) throws SQLException {
         ensureNotificationTable();
-        StringBuilder sql = new StringBuilder("SELECT tipe, judul, pesan, created_at FROM notifications WHERE 1=1");
+        StringBuilder sql = new StringBuilder("SELECT tipe, judul, pesan, is_read, created_at FROM notifications WHERE 1=1");
         List<Object> params = new ArrayList<>();
         if (targetUserId != null) {
             sql.append(" AND (target_user_id = ? OR target_user_id IS NULL)");
